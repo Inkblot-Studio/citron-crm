@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/lib/commandcontext.tsx","./src/lib/mock-engine.ts","./src/lib/types.ts","./src/pages/eventspage.tsx","./src/pages/graphpage.tsx","./src/pages/homepage.tsx","./src/pages/intelligencelabpage.tsx","./src/pages/pipelinepage.tsx","./src/pages/settingspage.tsx","./vite-env.d.ts"],"version":"5.9.3"}

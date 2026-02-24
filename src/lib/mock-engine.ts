@@ -1,0 +1,128 @@
+import { useState, useEffect } from 'react'
+import type { GraphNode, GraphEdge, CitronEvent } from './types'
+
+const ENTITIES: GraphNode[] = [
+  { id: 'org-001', type: 'Organization', name: 'Acme Corp', metadata: {}, createdAt: '2025-11-01T08:00:00Z', updatedAt: '2026-02-20T14:30:00Z' },
+  { id: 'org-002', type: 'Organization', name: 'TechVentures', metadata: {}, createdAt: '2025-09-15T10:00:00Z', updatedAt: '2026-02-19T09:15:00Z' },
+  { id: 'org-003', type: 'Organization', name: 'GlobalTech', metadata: {}, createdAt: '2025-08-01T10:00:00Z', updatedAt: '2026-02-18T09:00:00Z' },
+  { id: 'org-004', type: 'Organization', name: 'DataFlow Labs', metadata: {}, createdAt: '2025-10-01T10:00:00Z', updatedAt: '2026-02-17T09:00:00Z' },
+  { id: 'per-001', type: 'Person', name: 'Jane Smith', metadata: {}, createdAt: '2025-12-01T12:00:00Z', updatedAt: '2026-02-21T16:45:00Z' },
+  { id: 'per-002', type: 'Person', name: 'Mark Johnson', metadata: {}, createdAt: '2025-10-20T09:30:00Z', updatedAt: '2026-02-18T11:00:00Z' },
+  { id: 'per-003', type: 'Person', name: 'Sarah Lee', metadata: {}, createdAt: '2025-11-15T10:00:00Z', updatedAt: '2026-02-19T11:00:00Z' },
+]
+
+const EDGES: GraphEdge[] = [
+  { id: 'edge-001', type: 'WORKS_AT', sourceId: 'per-001', targetId: 'org-001', createdAt: '2025-12-01T12:00:00Z' },
+  { id: 'edge-002', type: 'WORKS_AT', sourceId: 'per-002', targetId: 'org-002', createdAt: '2025-10-20T09:30:00Z' },
+  { id: 'edge-003', type: 'WORKS_AT', sourceId: 'per-003', targetId: 'org-003', createdAt: '2025-11-15T10:00:00Z' },
+  { id: 'edge-004', type: 'PARTNER_OF', sourceId: 'org-001', targetId: 'org-002', createdAt: '2025-11-15T10:00:00Z' },
+  { id: 'edge-005', type: 'PARTNER_OF', sourceId: 'org-001', targetId: 'org-004', createdAt: '2025-12-01T10:00:00Z' },
+  { id: 'edge-006', type: 'REPORTS_TO', sourceId: 'per-001', targetId: 'per-002', createdAt: '2025-11-01T10:00:00Z' },
+  { id: 'edge-007', type: 'CONSULTS', sourceId: 'per-003', targetId: 'org-001', createdAt: '2025-12-15T10:00:00Z' },
+  { id: 'edge-008', type: 'PARTNER_OF', sourceId: 'org-002', targetId: 'org-004', createdAt: '2026-01-01T10:00:00Z' },
+]
+
+const EVENTS: CitronEvent[] = [
+  { id: 'evt-001', actor: 'Jane Smith', subject: 'Acme Corp', event_type: 'EMAIL_OPENED', timestamp: 'Live', confidence_score: 0.95, metadata: { description: 'Email opened', details: 'Jane Smith - Acme Corp' } },
+  { id: 'evt-002', actor: 'TechVentures', subject: '$2,100', event_type: 'INVOICE_PAID', timestamp: '2m ago', confidence_score: 1.0, metadata: { description: 'Invoice #1042 paid', details: '$2,100 - TechVentures' } },
+  { id: 'evt-003', actor: 'Pipeline', subject: 'Negotiation → Closing', event_type: 'STAGE_CHANGED', timestamp: '14m ago', confidence_score: 1.0, metadata: { description: 'Pipeline stage changed', details: 'Negotiation → Closing' } },
+  { id: 'evt-004', actor: 'Mark Johnson', subject: '12 min', event_type: 'CALL_COMPLETED', timestamp: '22m ago', confidence_score: 0.88, metadata: { description: 'Call completed', details: '12 min - Mark Johnson' } },
+  { id: 'evt-005', actor: 'GlobalTech Inc', subject: 'NDA', event_type: 'CONTRACT_SIGNED', timestamp: '1h ago', confidence_score: 1.0, metadata: { description: 'Contract signed', details: 'NDA - GlobalTech Inc' } },
+  { id: 'evt-006', actor: 'Acme', subject: 'DataFlow Labs', event_type: 'RELATIONSHIP_DETECTED', timestamp: '2h ago', confidence_score: 0.9, metadata: { description: 'New relationship detected', details: 'Acme ↔ DataFlow Labs' } },
+  { id: 'evt-007', actor: 'StartupXYZ', subject: '$8,200', event_type: 'INVOICE_OVERDUE', timestamp: '3h ago', confidence_score: 1.0, metadata: { description: 'Invoice overdue', details: '$8,200 - StartupXYZ' } },
+]
+
+interface CitronOSState {
+  entities: GraphNode[]
+  edges: GraphEdge[]
+  events: CitronEvent[]
+  focusEntity: GraphNode
+  setFocusEntity: (entity: GraphNode) => void
+  loading: boolean
+}
+
+export function useCitronOS(): CitronOSState {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState({
+    entities: [] as GraphNode[],
+    edges: [] as GraphEdge[],
+    events: [] as CitronEvent[],
+  })
+  const [focusEntity, setFocusEntity] = useState<GraphNode>(ENTITIES[0]!)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setData({
+        entities: ENTITIES,
+        edges: EDGES,
+        events: EVENTS,
+      })
+      setFocusEntity(ENTITIES[0]!)
+      setLoading(false)
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return { ...data, focusEntity, setFocusEntity, loading }
+}
+
+export function getEntityById(id: string): GraphNode | undefined {
+  return ENTITIES.find((e) => e.id === id)
+}
+
+export function findEntityByName(query: string): GraphNode | undefined {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return undefined
+  return ENTITIES.find(
+    (e) =>
+      e.name.toLowerCase().includes(normalized) ||
+      normalized.includes(e.name.toLowerCase())
+  )
+}
+
+export { ENTITIES }
+
+export function buildPipelineMetrics(): { label: string; value: string | number; variant?: 'default' | 'success' | 'warning' | 'error' }[] {
+  return [
+    { label: 'Prospecting', value: '$45,000', variant: 'default' },
+    { label: 'Discovery', value: '$78,000', variant: 'default' },
+    { label: 'Negotiation', value: '$125,000', variant: 'success' },
+    { label: 'Proposal Sent', value: '$91,600', variant: 'warning' },
+    { label: 'Closed Won', value: '$210,000', variant: 'success' },
+    { label: 'Closed Lost', value: '$32,000', variant: 'error' },
+  ]
+}
+
+export interface PipelineDeal {
+  id: string
+  deal: string
+  value: string
+  stage: string
+  score: number
+  trend: 'up' | 'down' | 'flat'
+}
+
+export const PIPELINE_DEALS: PipelineDeal[] = [
+  { id: '1', deal: 'Acme Corp - Enterprise', value: '$120,000', stage: 'Closing', score: 82, trend: 'up' },
+  { id: '2', deal: 'TechVentures - Pro', value: '$45,000', stage: 'Negotiation', score: 65, trend: 'up' },
+  { id: '3', deal: 'DataFlow Labs', value: '$70,000', stage: 'Discovery', score: 45, trend: 'down' },
+  { id: '4', deal: 'GlobalTech Inc', value: '$200,000', stage: 'Proposal', score: 38, trend: 'down' },
+  { id: '5', deal: 'StartupXYZ', value: '$15,000', stage: 'Closing', score: 81, trend: 'up' },
+]
+
+export const PIPELINE_METRIC_CARDS = [
+  { label: 'PIPELINE VALUE', value: '$458K', subtext: '+12% MoM' },
+  { label: 'AVG. DEAL SIZE', value: '$91.6K', subtext: '5 active' },
+  { label: 'WIN RATE', value: '68%', subtext: 'Last 90 days' },
+  { label: 'AVG. CYCLE', value: '34d', subtext: '3d vs prior' },
+]
+
+export function getEdgesForEntity(entityId: string): GraphEdge[] {
+  return EDGES.filter((e) => e.sourceId === entityId || e.targetId === entityId)
+}
+
+export function resolveEdgeTarget(edge: GraphEdge, fromId: string): string {
+  const targetId = edge.sourceId === fromId ? edge.targetId : edge.sourceId
+  const target = ENTITIES.find((e) => e.id === targetId)
+  return target?.name ?? targetId
+}
