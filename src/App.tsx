@@ -1,19 +1,29 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useLocation } from 'react-router-dom'
 import {
   MainShell,
   AppNavigationRail,
   EventStreamSidebar,
   CommandInterface,
+  RouteWithErrorBoundary,
+  ModuleSkeleton,
 } from '@citron-systems/citron-ui'
-import { ClipboardList, Brain, BarChart3, Network, Activity, Settings } from 'lucide-react'
+import { ClipboardList, Brain, BarChart3, Network, Activity, Settings, ListTodo, Mail } from 'lucide-react'
 import { useCitronOS } from '@/lib/mock-engine'
 import { CommandProvider, useCommand } from '@/lib/CommandContext'
-import { HomePage } from '@/pages/HomePage'
-import { IntelligenceLabPage } from '@/pages/IntelligenceLabPage'
-import { PipelinePage } from '@/pages/PipelinePage'
-import { GraphPage } from '@/pages/GraphPage'
-import { EventsPage } from '@/pages/EventsPage'
-import { SettingsPage } from '@/pages/SettingsPage'
+
+const HomePage = lazy(() => import('@/pages/HomePage').then((m) => ({ default: m.HomePage })))
+const IntelligenceLabPage = lazy(() =>
+  import('@/pages/IntelligenceLabPage').then((m) => ({ default: m.IntelligenceLabPage }))
+)
+const PipelinePage = lazy(() => import('@/pages/PipelinePage').then((m) => ({ default: m.PipelinePage })))
+const GraphPage = lazy(() => import('@/pages/GraphPage').then((m) => ({ default: m.GraphPage })))
+const EventsPage = lazy(() => import('@/pages/EventsPage').then((m) => ({ default: m.EventsPage })))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const TasksPage = lazy(() => import('@/pages/Tasks').then((m) => ({ default: m.TasksPage })))
+const EmailCampaignsPage = lazy(() =>
+  import('@/pages/EmailCampaigns').then((m) => ({ default: m.EmailCampaignsPage }))
+)
 
 export interface CitronOSContext {
   entities: import('@/lib/types').GraphNode[]
@@ -29,6 +39,8 @@ const NAV_ITEMS = [
   { id: 'intelligence', path: '/intelligence', icon: Brain, label: 'Intelligence' },
   { id: 'pipeline', path: '/pipeline', icon: BarChart3, label: 'Pipeline' },
   { id: 'graph', path: '/graph', icon: Network, label: 'Graph' },
+  { id: 'tasks', path: '/tasks', icon: ListTodo, label: 'To-do' },
+  { id: 'email-campaigns', path: '/email-campaigns', icon: Mail, label: 'Email Campaigns' },
   { id: 'events', path: '/events', icon: Activity, label: 'Events' },
   { id: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
 ]
@@ -82,12 +94,86 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePageWithContext />} />
-          <Route path="/intelligence" element={<IntelligenceLabPageWithContext />} />
-          <Route path="/pipeline" element={<PipelinePageWithContext />} />
-          <Route path="/graph" element={<GraphPageWithContext />} />
-          <Route path="/events" element={<EventsPageWithContext />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <HomePageWithContext />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/intelligence"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <IntelligenceLabPageWithContext />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/pipeline"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <PipelinePageWithContext />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/graph"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <GraphPageWithContext />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <TasksPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/email-campaigns"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <EmailCampaignsPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/events"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <EventsPageWithContext />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <SettingsPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>

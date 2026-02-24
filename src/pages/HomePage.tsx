@@ -11,12 +11,14 @@ interface HomePageProps {
 export function HomePage(_props: HomePageProps) {
   const { messages, generatedUI, isProcessing } = useCommand()
   const feedRef = useRef<HTMLDivElement>(null)
+  const lastMessageRef = useRef<HTMLDivElement>(null)
   const skeletonRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const scrollToNewContent = () => {
-      if (skeletonRef.current) {
-        skeletonRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      const target = lastMessageRef.current
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
       } else if (feedRef.current) {
         feedRef.current.scrollTop = feedRef.current.scrollHeight
       }
@@ -36,8 +38,12 @@ export function HomePage(_props: HomePageProps) {
         </div>
 
         <div ref={feedRef} className="flex flex-1 flex-col gap-4 overflow-y-auto">
-          {messages.map((msg) => (
-            <div key={msg.id} className="flex flex-col gap-2">
+          {messages.map((msg, index) => (
+            <div
+              key={msg.id}
+              ref={index === messages.length - 1 ? lastMessageRef : undefined}
+              className="flex flex-col gap-2"
+            >
               {msg.role === 'user' ? (
                 <div className="flex justify-end">
                   <div className="max-w-[85%] sm:max-w-[80%] rounded-[var(--inkblot-radius-lg)] bg-[var(--inkblot-semantic-color-interactive-primary)] px-4 py-3 text-sm text-[var(--inkblot-semantic-color-text-primary)]">
