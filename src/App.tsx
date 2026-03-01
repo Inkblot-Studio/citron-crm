@@ -1,8 +1,8 @@
-import { Suspense, lazy, useState } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useLocation } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useLocation, useNavigate } from 'react-router-dom'
 import {
   MainShell,
-  AppNavigationRail,
+  AppSidebar,
   EventStreamSidebar,
   CommandInterface,
   RouteWithErrorBoundary,
@@ -61,19 +61,22 @@ export interface CitronOSContext {
   loading: boolean
 }
 
-const NAV_ITEMS = [
-  { id: 'home', path: '/', icon: MessageSquare, label: 'Canvas' },
-  { id: 'deals', path: '/deals', icon: BarChart3, label: 'Deals' },
-  { id: 'contacts', path: '/contacts', icon: Users, label: 'Contacts' },
-  { id: 'graph', path: '/graph', icon: Network, label: 'Graph' },
-  { id: 'events', path: '/events', icon: Activity, label: 'Events' },
-  { id: 'campaigns', path: '/campaigns', icon: Mail, label: 'Campaigns' },
-  { id: 'invoices', path: '/invoices', icon: FileText, label: 'Invoices' },
-  { id: 'tasks', path: '/tasks', icon: ListTodo, label: 'Tasks' },
-  { id: 'automations', path: '/automations', icon: Workflow, label: 'Automations' },
-  { id: 'reports', path: '/reports', icon: PieChart, label: 'Reports' },
-  { id: 'intelligence', path: '/intelligence', icon: Brain, label: 'Intel Lab' },
-  { id: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
+const SIDEBAR_ITEMS = [
+  { id: 'home', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
+  { id: 'deals', icon: BarChart3, label: 'Deals', path: '/deals', dataTour: 'nav-deals' },
+  { id: 'contacts', icon: Users, label: 'Contacts', path: '/contacts', dataTour: 'nav-contacts' },
+  { id: 'graph', icon: Network, label: 'Graph', path: '/graph', dataTour: 'nav-graph' },
+  { id: 'events', icon: Activity, label: 'Events', path: '/events', dataTour: 'nav-events' },
+  { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
+  { id: 'invoices', icon: FileText, label: 'Invoices', path: '/invoices', dataTour: 'nav-invoices' },
+  { id: 'tasks', icon: ListTodo, label: 'Tasks', path: '/tasks', dataTour: 'nav-tasks' },
+  { id: 'automations', icon: Workflow, label: 'Automations', path: '/automations', dataTour: 'nav-automations' },
+  { id: 'reports', icon: PieChart, label: 'Reports', path: '/reports', dataTour: 'nav-reports' },
+  { id: 'intelligence', icon: Brain, label: 'Intel Lab', path: '/intelligence', dataTour: 'nav-intelligence' },
+]
+
+const SIDEBAR_BOTTOM_ITEMS = [
+  { id: 'settings', icon: Settings, label: 'Settings', path: '/settings', dataTour: 'nav-settings' },
 ]
 
 const ONBOARDING_STEPS = [
@@ -190,7 +193,7 @@ const TOUR_STEPS: GuidedTourStep[] = [
     target: '[data-tour="canvas"]',
     title: 'AI Command Canvas',
     description: 'Your AI-powered command center. Chat with the system to manage deals, create emails, and generate reports.',
-    position: 'bottom',
+    position: 'right',
   },
   {
     target: '[data-tour="event-feed"]',
@@ -222,12 +225,6 @@ const TOUR_STEPS: GuidedTourStep[] = [
     description: 'Generate professional invoices using AI. Just describe the work and the system handles the rest.',
     position: 'right',
   },
-  {
-    target: '[data-tour="system-status"]',
-    title: 'System Status',
-    description: 'This indicator shows your platform status. Green means all systems are operational.',
-    position: 'right',
-  },
 ]
 
 function CommandBarConnected() {
@@ -250,9 +247,15 @@ function CommandBarConnected() {
   )
 }
 
-function AppLayoutShell() {
+interface AppLayoutShellProps {
+  tourActive: boolean
+  onTourComplete: () => void
+}
+
+function AppLayoutShell({ tourActive, onTourComplete }: AppLayoutShellProps) {
   const citron = useCitronOS()
   const location = useLocation()
+  const navigate = useNavigate()
   const showEventStream = location.pathname !== '/events'
 
   return (
@@ -264,11 +267,17 @@ function AppLayoutShell() {
       <MainShell
         className="min-w-0"
         navigation={
-          <div data-tour="sidebar" className="flex h-full flex-col">
-            <AppNavigationRail items={NAV_ITEMS} brandTitle="Command Canvas" className="p-2 sm:p-3" />
+          <div data-tour="sidebar" className="relative h-full">
+            <AppSidebar
+              items={SIDEBAR_ITEMS}
+              bottomItems={SIDEBAR_BOTTOM_ITEMS}
+              activePath={location.pathname}
+              onNavigate={navigate}
+              className="h-full"
+            />
             <div
               data-tour="system-status"
-              className="mx-auto mt-2 h-2 w-2 rounded-full bg-[var(--inkblot-semantic-color-status-success)] animate-pulse"
+              className="pointer-events-none absolute bottom-3 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-[var(--inkblot-semantic-color-status-success)] animate-pulse"
               title="System Online"
             />
           </div>
@@ -285,15 +294,30 @@ function AppLayoutShell() {
       >
         <Outlet context={citron} />
       </MainShell>
+      {tourActive && <GuidedTour steps={TOUR_STEPS} onComplete={onTourComplete} />}
     </CommandProvider>
   )
 }
 
 export default function App() {
+  const isDev = import.meta.env.DEV
   const [onboardingDone, setOnboardingDone] = useState(
-    () => localStorage.getItem('citron-onboarding-done') === 'true'
+    () => (isDev ? false : localStorage.getItem('citron-onboarding-done') === 'true')
   )
-  const [tourActive, setTourActive] = useState(false)
+  const [tourActive, setTourActive] = useState(() => {
+    if (isDev) return false
+    const onboardingIsDone = localStorage.getItem('citron-onboarding-done') === 'true'
+    const tourIsDone = localStorage.getItem('citron-tour-done') === 'true'
+    return onboardingIsDone && !tourIsDone
+  })
+
+  useEffect(() => {
+    if (!isDev) return
+    localStorage.removeItem('citron-onboarding-done')
+    localStorage.removeItem('citron-tour-done')
+    setOnboardingDone(false)
+    setTourActive(false)
+  }, [isDev])
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('citron-onboarding-done', 'true')
@@ -314,16 +338,8 @@ export default function App() {
         <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
       )}
       <BrowserRouter>
-        {tourActive && (
-          <>
-            <div className="fixed inset-0 z-[9998] bg-black/70" aria-hidden />
-            <div className="fixed inset-0 z-[9999]">
-              <GuidedTour steps={TOUR_STEPS} onComplete={handleTourComplete} />
-            </div>
-          </>
-        )}
         <Routes>
-          <Route element={<AppLayoutShell />}>
+          <Route element={<AppLayoutShell tourActive={tourActive} onTourComplete={handleTourComplete} />}>
             <Route
               path="/"
               element={
