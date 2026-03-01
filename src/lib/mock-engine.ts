@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import type { GraphNode, GraphEdge, CitronEvent } from './types'
+import type {
+  GraphNode,
+  GraphEdge,
+  CitronEvent,
+  Invoice,
+  Contact,
+  Automation,
+  ReportMetric,
+  FunnelStage,
+  TopPerformer,
+} from './types'
 
 const ENTITIES: GraphNode[] = [
   { id: 'org-001', type: 'Organization', name: 'Acme Corp', metadata: {}, createdAt: '2025-11-01T08:00:00Z', updatedAt: '2026-02-20T14:30:00Z' },
@@ -126,3 +136,106 @@ export function resolveEdgeTarget(edge: GraphEdge, fromId: string): string {
   const target = ENTITIES.find((e) => e.id === targetId)
   return target?.name ?? targetId
 }
+
+export const MOCK_INVOICES: Invoice[] = [
+  { id: 'INV-2026-001', client: 'Acme Corp', amount: '$12,400', status: 'paid', date: 'Feb 10, 2026' },
+  { id: 'INV-2026-002', client: 'TechVentures', amount: '$4,500', status: 'pending', date: 'Feb 18, 2026' },
+  { id: 'INV-2026-003', client: 'DataFlow Labs', amount: '$7,800', status: 'overdue', date: 'Jan 28, 2026' },
+  { id: 'INV-2026-004', client: 'GlobalTech', amount: '$22,000', status: 'draft', date: 'Feb 25, 2026' },
+]
+
+export const INVOICE_KPI = [
+  { label: 'Total Revenue', value: '$46.7K', change: '+12%', changeVariant: 'success' as const },
+  { label: 'Outstanding', value: '$12.3K', change: '3 invoices', changeVariant: 'neutral' as const },
+  { label: 'Overdue', value: '$7.8K', change: '1 invoice', changeVariant: 'error' as const },
+  { label: 'Avg. Payment', value: '12d', change: '-2d vs prior', changeVariant: 'success' as const },
+]
+
+export const MOCK_CONTACTS: Contact[] = [
+  { id: 'c1', name: 'Sarah Chen', company: 'Acme Corp', role: 'VP of Engineering', score: 92, tags: ['Champion', 'Decision Maker'], lastActivity: '2h ago', starred: true },
+  { id: 'c2', name: 'Marcus Johnson', company: 'TechVentures', role: 'CTO', score: 78, tags: ['Technical Buyer'], lastActivity: '1d ago', starred: false },
+  { id: 'c3', name: 'Elena Rodriguez', company: 'GlobalTech Inc', role: 'Head of Product', score: 45, tags: ['At Risk'], lastActivity: '12d ago', starred: false },
+  { id: 'c4', name: 'David Park', company: 'DataFlow Labs', role: 'CEO', score: 67, tags: ['Executive Sponsor'], lastActivity: '3h ago', starred: true },
+  { id: 'c5', name: 'Lisa Wang', company: 'StartupXYZ', role: 'COO', score: 88, tags: ['Champion', 'Budget Holder'], lastActivity: '5h ago', starred: false },
+  { id: 'c6', name: 'James Miller', company: 'Acme Corp', role: 'Engineering Manager', score: 71, tags: ['End User'], lastActivity: '6h ago', starred: false },
+  { id: 'c7', name: 'Anna Fischer', company: 'GlobalTech Inc', role: 'CFO', score: 34, tags: ['At Risk', 'Budget Holder'], lastActivity: '21d ago', starred: false },
+  { id: 'c8', name: 'Tom Nakamura', company: 'TechVentures', role: 'VP Sales', score: 83, tags: ['Decision Maker'], lastActivity: '8h ago', starred: true },
+]
+
+export const MOCK_AUTOMATIONS: Automation[] = [
+  {
+    id: 'auto-1',
+    name: 'New Lead \u2192 Welcome Sequence',
+    trigger: 'Contact created',
+    actions: ['Send welcome email', 'Create task for SDR', 'Add to nurture segment'],
+    status: 'active',
+    runs: 342,
+    lastRun: '12 min ago',
+  },
+  {
+    id: 'auto-2',
+    name: 'Deal Stage \u2192 Notification',
+    trigger: 'Deal moves to Negotiation',
+    actions: ['Notify account exec', 'Schedule follow-up', 'Update CRM score'],
+    status: 'active',
+    runs: 89,
+    lastRun: '2h ago',
+  },
+  {
+    id: 'auto-3',
+    name: 'Churn Risk Alert',
+    trigger: 'Score drops below 40',
+    actions: ['Alert CS manager', 'Create retention task', 'Send re-engagement email'],
+    status: 'active',
+    runs: 23,
+    lastRun: '1d ago',
+  },
+  {
+    id: 'auto-4',
+    name: 'Meeting Follow-up',
+    trigger: 'Meeting completed',
+    actions: ['Send summary email', 'Create next steps task'],
+    status: 'paused',
+    runs: 156,
+    lastRun: '3d ago',
+  },
+  {
+    id: 'auto-5',
+    name: 'Invoice Overdue Escalation',
+    trigger: 'Invoice overdue > 7 days',
+    actions: ['Send reminder', 'Notify finance', 'Flag in pipeline'],
+    status: 'paused',
+    runs: 12,
+    lastRun: '5d ago',
+  },
+]
+
+export const REPORT_METRICS: ReportMetric[] = [
+  { label: 'MRR', value: '$284K', change: '+18%', up: true },
+  { label: 'New Customers', value: '34', change: '+12%', up: true },
+  { label: 'Conversion Rate', value: '24%', change: '+2.1pp', up: true },
+  { label: 'Avg. Response Time', value: '2.4h', change: '-18%', up: true },
+]
+
+export const REVENUE_DATA = [
+  { month: 'Sep', value: 42 },
+  { month: 'Oct', value: 48 },
+  { month: 'Nov', value: 45 },
+  { month: 'Dec', value: 62 },
+  { month: 'Jan', value: 58 },
+  { month: 'Feb', value: 71 },
+]
+
+export const FUNNEL_STAGES: FunnelStage[] = [
+  { stage: 'Leads', count: 1240, pct: 100 },
+  { stage: 'Qualified', count: 680, pct: 55 },
+  { stage: 'Proposal', count: 320, pct: 26 },
+  { stage: 'Negotiation', count: 180, pct: 15 },
+  { stage: 'Closed Won', count: 89, pct: 7 },
+]
+
+export const TOP_PERFORMERS: TopPerformer[] = [
+  { name: 'Sarah Kim', closed: 12, revenue: '$340K', rate: 78 },
+  { name: 'Mike Roberts', closed: 9, revenue: '$280K', rate: 65 },
+  { name: 'Lisa Chen', closed: 8, revenue: '$195K', rate: 72 },
+]

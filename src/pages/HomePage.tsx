@@ -30,14 +30,14 @@ export function HomePage(_props: HomePageProps) {
   }, [messages, isProcessing])
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+    <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 min-w-0" data-tour="canvas">
       <div className="flex min-w-0 flex-1 w-full max-w-2xl flex-col gap-4 mx-auto">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-[var(--inkblot-semantic-color-status-success)]" />
           <span className="text-sm text-[var(--inkblot-semantic-color-text-secondary)]">System ready</span>
         </div>
 
-        <div ref={feedRef} className="flex flex-1 flex-col gap-4 overflow-y-auto">
+        <div ref={feedRef} className="flex flex-1 flex-col gap-4 overflow-y-auto min-h-0">
           {messages.map((msg, index) => (
             <div
               key={msg.id}
@@ -46,7 +46,7 @@ export function HomePage(_props: HomePageProps) {
             >
               {msg.role === 'user' ? (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] sm:max-w-[80%] rounded-[var(--inkblot-radius-lg)] bg-[var(--inkblot-semantic-color-interactive-primary)] px-4 py-3 text-sm text-[var(--inkblot-semantic-color-text-primary)]">
+                  <div className="max-w-[85%] sm:max-w-[80%] rounded-[var(--inkblot-radius-lg)] bg-[var(--inkblot-semantic-color-interactive-primary)] px-4 py-3 text-sm text-[var(--inkblot-semantic-color-text-inverse)]">
                     {msg.content}
                   </div>
                 </div>

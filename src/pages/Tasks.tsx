@@ -3,36 +3,13 @@ import { TasksView } from '@citron-systems/citron-ui'
 import type { TaskWithStatus, TaskCreatePayload } from '@citron-systems/citron-ui'
 
 const MOCK_TASKS: TaskWithStatus[] = [
-  {
-    id: '1',
-    title: 'Review Q4 forecast',
-    company: 'Acme Corp',
-    priority: 'high',
-    date: '2025-01-15',
-    assignee: 'Alex',
-    completed: false,
-    status: 'todo',
-  },
-  {
-    id: '2',
-    title: 'Send contract to Legal',
-    company: 'TechVentures',
-    priority: 'medium',
-    date: '2025-01-14',
-    assignee: 'Jordan',
-    completed: false,
-    status: 'in_progress',
-  },
-  {
-    id: '3',
-    title: 'Update pipeline dashboard',
-    company: 'Internal',
-    priority: 'low',
-    date: '2025-01-13',
-    assignee: 'Alex',
-    completed: true,
-    status: 'done',
-  },
+  { id: '1', title: 'Follow up with Sarah Chen on proposal', company: 'Acme Corp', priority: 'high', date: 'Today', assignee: 'You', completed: false, status: 'todo' },
+  { id: '2', title: 'Prepare demo for TechVentures', company: 'TechVentures', priority: 'high', date: 'Tomorrow', assignee: 'You', completed: false, status: 'in_progress' },
+  { id: '3', title: 'Send contract to StartupXYZ', company: 'StartupXYZ', priority: 'medium', date: 'Feb 26', assignee: 'Mike R.', completed: false, status: 'todo' },
+  { id: '4', title: 'Review GlobalTech churn signals', company: 'GlobalTech', priority: 'urgent', date: 'Feb 25', assignee: 'You', completed: false, status: 'todo' },
+  { id: '5', title: 'Update pricing deck Q1', company: '', priority: 'low', date: 'Mar 1', assignee: 'Lisa K.', completed: false, status: 'in_progress' },
+  { id: '6', title: 'Schedule QBR with Acme Corp', company: 'Acme Corp', priority: 'medium', date: 'Feb 28', assignee: 'You', completed: true, status: 'done' },
+  { id: '7', title: 'Send onboarding docs to DataFlow', company: 'DataFlow Labs', priority: 'medium', date: 'Feb 24', assignee: 'Mike R.', completed: true, status: 'done' },
 ]
 
 export function TasksPage() {
@@ -57,7 +34,9 @@ export function TasksPage() {
   const handleTaskToggle = useCallback((taskId: string) => {
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === taskId ? { ...t, completed: true, status: 'done' as const } : t
+        t.id === taskId
+          ? { ...t, completed: !t.completed, status: (t.completed ? 'todo' : 'done') as 'todo' | 'done' }
+          : t
       )
     )
   }, [])

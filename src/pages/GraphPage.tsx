@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useCallback } from 'react'
-import { ModuleContainer } from '@citron-systems/citron-ui'
-import type { GraphNode, EntityType } from '@/lib/types'
+import { PageHeader } from '@citron-systems/citron-ui'
 import type { CitronOSContext } from '@/App'
+import type { GraphNode, EntityType } from '@/lib/types'
 
 function getNodeColor(type: EntityType): string {
   switch (type) {
@@ -30,7 +30,7 @@ function computeLayout(entities: GraphNode[]) {
   })
 }
 
-export function GraphPage({ entities, edges, loading }: CitronOSContext) {
+export function GraphPage({ entities, edges }: CitronOSContext) {
   const layout = useMemo(() => computeLayout(entities), [entities])
   const idToPos = useMemo(() => {
     const m = new Map<string, { x: number; y: number }>()
@@ -52,17 +52,20 @@ export function GraphPage({ entities, edges, loading }: CitronOSContext) {
     []
   )
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
-      setIsDragging(true)
-      dragStart.current = {
-        mouseX: e.clientX,
-        mouseY: e.clientY,
-        translateX: translate.x,
-        translateY: translate.y,
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button === 0) {
+        setIsDragging(true)
+        dragStart.current = {
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          translateX: translate.x,
+          translateY: translate.y,
+        }
       }
-    }
-  }, [translate])
+    },
+    [translate]
+  )
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
@@ -85,40 +88,31 @@ export function GraphPage({ entities, edges, loading }: CitronOSContext) {
   }, [])
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden p-4 sm:p-6 min-w-0">
-      <ModuleContainer loading={loading} title="Entity Graph">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-[var(--inkblot-semantic-color-text-primary)]">
-              Entity Graph
-            </h1>
-            <p className="text-sm text-[var(--inkblot-semantic-color-text-secondary)]">
-              Relationship intelligence - {entities.length} nodes - {edges.length} edges
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: getNodeColor('Organization') }}
-              />
-              <span className="text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
-                Orgs
-              </span>
+    <div className="flex h-full flex-col overflow-hidden p-4 sm:p-6 min-w-0">
+      <div className="flex flex-col gap-4 min-h-0 flex-1">
+        <PageHeader
+          title="Entity Graph"
+          subtitle={`Relationship intelligence \u00B7 ${entities.length} nodes \u00B7 ${edges.length} edges`}
+          icon={
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--inkblot-radius-md)] bg-[var(--inkblot-semantic-color-background-tertiary)]">
+              <div className="h-2 w-2 rounded-full bg-[var(--inkblot-semantic-color-status-success)]" />
             </div>
-            <div className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: getNodeColor('Person') }}
-              />
-              <span className="text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
-                People
-              </span>
-            </div>
-          </div>
+          }
+        />
+
+        <div className="flex flex-wrap gap-4 text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[var(--inkblot-semantic-color-status-success)]" />
+            Orgs
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[var(--inkblot-semantic-color-status-warning)]" />
+            People
+          </span>
         </div>
+
         <div
-          className="relative mt-4 flex-1 min-h-[300px] sm:min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+          className="relative flex-1 min-h-[300px] sm:min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -126,54 +120,50 @@ export function GraphPage({ entities, edges, loading }: CitronOSContext) {
           onMouseLeave={handleMouseLeave}
           style={{ touchAction: 'none' }}
         >
-          <svg
-            viewBox="0 0 800 500"
-            className="h-full w-full"
-            style={{ overflow: 'visible' }}
-          >
+          <svg viewBox="0 0 800 500" className="h-full w-full" style={{ overflow: 'visible' }}>
             <g transform={`translate(${translate.x}, ${translate.y}) scale(${scale})`}>
-            {edges.map((edge) => {
-              const src = idToPos.get(edge.sourceId)
-              const tgt = idToPos.get(edge.targetId)
-              if (!src || !tgt) return null
-              return (
-                <line
-                  key={edge.id}
-                  x1={src.x}
-                  y1={src.y}
-                  x2={tgt.x}
-                  y2={tgt.y}
-                  stroke="var(--inkblot-semantic-color-border-default)"
-                  strokeWidth={1}
-                />
-              )
-            })}
-            {layout.map((node) => (
-              <g key={node.id}>
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={24}
-                  fill="var(--inkblot-semantic-color-background-primary)"
-                  stroke={getNodeColor(node.type)}
-                  strokeWidth={3}
-                />
-                <text
-                  x={node.x}
-                  y={node.y + 38}
-                  textAnchor="middle"
-                  fill="var(--inkblot-semantic-color-text-primary)"
-                  fontSize={12}
-                  fontFamily="var(--inkblot-typography-font-family-sans)"
-                >
-                  {node.name}
-                </text>
-              </g>
-            ))}
+              {edges.map((edge) => {
+                const src = idToPos.get(edge.sourceId)
+                const tgt = idToPos.get(edge.targetId)
+                if (!src || !tgt) return null
+                return (
+                  <line
+                    key={edge.id}
+                    x1={src.x}
+                    y1={src.y}
+                    x2={tgt.x}
+                    y2={tgt.y}
+                    stroke="var(--inkblot-semantic-color-border-default)"
+                    strokeWidth={1}
+                  />
+                )
+              })}
+              {layout.map((node) => (
+                <g key={node.id}>
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={24}
+                    fill="var(--inkblot-semantic-color-background-primary)"
+                    stroke={getNodeColor(node.type)}
+                    strokeWidth={3}
+                  />
+                  <text
+                    x={node.x}
+                    y={node.y + 38}
+                    textAnchor="middle"
+                    fill="var(--inkblot-semantic-color-text-primary)"
+                    fontSize={12}
+                    fontFamily="var(--inkblot-typography-font-family-sans)"
+                  >
+                    {node.name}
+                  </text>
+                </g>
+              ))}
             </g>
           </svg>
         </div>
-      </ModuleContainer>
+      </div>
     </div>
   )
 }
