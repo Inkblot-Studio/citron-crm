@@ -1,73 +1,102 @@
-import { useState } from 'react'
+import { CircularScore } from '@citron-systems/citron-ui'
 import {
-  PageHeader,
-  PageHeaderActionButton,
-  TabSystem,
-  Card,
-  CardContent,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  Input,
-  Textarea,
-  Button,
-  Progress,
-  StatusBadge,
-} from '@citron-systems/citron-ui'
-import { FileText, Sparkles, Send, Download, CheckCircle2, Clock, AlertCircle, ArrowRight } from 'lucide-react'
-import { MOCK_INVOICES, INVOICE_KPI } from '@/lib/mock-engine'
-import type { GeneratedInvoice } from '@/lib/types'
+  FileText,
+  Plus,
+  Sparkles,
+  Send,
+  Download,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowRight,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useToast } from '@/lib/ToastContext'
 
-const TABS = [
-  { id: 'invoices', label: 'Invoices' },
-  { id: 'create', label: 'AI Create' },
-]
-
-const WIZARD_STEPS = [
-  { id: 'client', question: 'Who is this invoice for?', placeholder: 'e.g. Acme Corporation', field: 'clientName', multiline: false },
-  { id: 'client_email', question: "Client's email address?", placeholder: 'e.g. billing@acme.com', field: 'clientEmail', multiline: false },
-  { id: 'items', question: 'Describe the services or products to invoice', placeholder: 'e.g. Web development \u2014 40 hours at $150/hr, Hosting setup \u2014 flat fee $500', field: 'itemsDescription', multiline: true },
-  { id: 'due', question: 'When is payment due?', placeholder: 'e.g. Net 30, March 15 2026', field: 'dueDate', multiline: false },
+const wizardSteps = [
+  { id: 'client', question: 'Who is this invoice for?', placeholder: 'e.g. Acme Corporation', field: 'clientName' },
+  { id: 'client_email', question: "Client's email address?", placeholder: 'e.g. billing@acme.com', field: 'clientEmail' },
+  { id: 'items', question: 'Describe the services or products to invoice', placeholder: 'e.g. Web development — 40 hours at $150/hr', field: 'itemsDescription', multiline: true },
+  { id: 'due', question: 'When is payment due?', placeholder: 'e.g. Net 30, March 15 2026', field: 'dueDate' },
   { id: 'notes', question: 'Any additional notes or terms?', placeholder: 'e.g. Late payment fee 1.5%/month', field: 'notes', multiline: true },
 ]
 
-const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'error' | 'info' }> = {
-  paid: { label: 'Paid', variant: 'success' },
-  pending: { label: 'Pending', variant: 'warning' },
-  overdue: { label: 'Overdue', variant: 'error' },
-  draft: { label: 'Draft', variant: 'info' },
+interface InvoiceItem {
+  description: string
+  qty: number
+  rate: number
+  amount: number
 }
 
-const STATUS_ICON: Record<string, typeof CheckCircle2> = {
-  paid: CheckCircle2,
-  pending: Clock,
-  overdue: AlertCircle,
-  draft: FileText,
+interface InvoiceData {
+  clientName: string
+  clientEmail: string
+  dueDate: string
+  notes: string
+  invoiceNumber: string
+  items: InvoiceItem[]
+  subtotal: number
+  tax: number
+  total: number
 }
 
-export function InvoicesPage() {
-  const [activeTab, setActiveTab] = useState('invoices')
+const existingInvoices = [
+  { id: 'INV-2026-001', client: 'Acme Corp', amount: '$12,400', status: 'paid' as const, date: 'Feb 10, 2026' },
+  { id: 'INV-2026-002', client: 'TechVentures', amount: '$4,500', status: 'pending' as const, date: 'Feb 18, 2026' },
+  { id: 'INV-2026-003', client: 'DataFlow Labs', amount: '$7,800', status: 'overdue' as const, date: 'Jan 28, 2026' },
+  { id: 'INV-2026-004', client: 'GlobalTech', amount: '$22,000', status: 'draft' as const, date: 'Feb 25, 2026' },
+]
+
+const deals = [
+  { name: 'Acme Corp - Enterprise', value: '$120,000', stage: 'Closing', confidence: 82, trend: 'up' as const },
+  { name: 'TechVentures - Pro', value: '$45,000', stage: 'Negotiation', confidence: 65, trend: 'up' as const },
+  { name: 'DataFlow Labs', value: '$78,000', stage: 'Discovery', confidence: 45, trend: 'flat' as const },
+  { name: 'GlobalTech Inc', value: '$200,000', stage: 'Proposal', confidence: 38, trend: 'down' as const },
+  { name: 'StartupXYZ', value: '$15,000', stage: 'Closing', confidence: 91, trend: 'up' as const },
+]
+
+const statusConfig = {
+  paid: { label: 'Paid', icon: CheckCircle2, color: 'text-citrus-lime' },
+  pending: { label: 'Pending', icon: Clock, color: 'text-citrus-lemon' },
+  overdue: { label: 'Overdue', icon: AlertCircle, color: 'text-destructive' },
+  draft: { label: 'Draft', icon: FileText, color: 'text-muted-foreground' },
+}
+
+function TrendIcon({ trend }: { trend: 'up' | 'down' | 'flat' }) {
+  if (trend === 'up') return <TrendingUp className="w-3 h-3 text-citrus-lime" />
+  if (trend === 'down') return <TrendingDown className="w-3 h-3 text-destructive" />
+  return <Minus className="w-3 h-3 text-muted-foreground" />
+}
+
+type Tab = 'invoices' | 'deals' | 'create'
+
+export default function InvoicesPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('invoices')
   const [wizardStep, setWizardStep] = useState(0)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [generating, setGenerating] = useState(false)
-  const [generatedInvoice, setGeneratedInvoice] = useState<GeneratedInvoice | null>(null)
+  const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceData | null>(null)
+  const { addToast } = useToast()
 
-  const currentStep = WIZARD_STEPS[wizardStep]
+  const currentStep = wizardSteps[wizardStep]
+
+  const handleExportPDF = () => addToast({ title: 'PDF exported', description: 'Your invoice has been downloaded.', variant: 'success' })
+  const handleSendToClient = () => addToast({ title: 'Invoice sent', description: 'The invoice has been sent to the client.', variant: 'success' })
   const currentValue = formData[currentStep?.field ?? ''] ?? ''
 
   const handleNext = () => {
-    if (wizardStep < WIZARD_STEPS.length - 1) {
+    if (wizardStep < wizardSteps.length - 1) {
       setWizardStep((s) => s + 1)
     } else {
       setGenerating(true)
       setTimeout(() => {
-        setGeneratedInvoice({
+        const invoice: InvoiceData = {
           clientName: formData.clientName || 'Client',
           clientEmail: formData.clientEmail || '',
-          itemsDescription: formData.itemsDescription || '',
           dueDate: formData.dueDate || 'Net 30',
           notes: formData.notes || '',
           invoiceNumber: `INV-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
@@ -79,7 +108,8 @@ export function InvoicesPage() {
           subtotal: 7900,
           tax: 790,
           total: 8690,
-        })
+        }
+        setGeneratedInvoice(invoice)
         setGenerating(false)
       }, 2000)
     }
@@ -92,243 +122,264 @@ export function InvoicesPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 min-w-0">
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Invoices"
-          subtitle="AI-powered invoice creation \u00B7 Template engine"
-          icon={
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--inkblot-radius-md)] bg-[var(--inkblot-semantic-color-interactive-primary)]">
-              <FileText className="h-5 w-5 text-[var(--inkblot-semantic-color-text-inverse)]" />
-            </div>
-          }
-          action={
-            <PageHeaderActionButton
-              label="New Invoice"
-              onClick={() => {
-                setActiveTab('create')
-                resetWizard()
-              }}
-            />
-          }
-        />
+    <div className="h-full flex flex-col">
+      <header className="px-8 py-5 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-citrus-lemon/10 flex items-center justify-center">
+            <FileText className="w-4 h-4 text-citrus-lemon" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-foreground">Invoices & Deals</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Pipeline management · AI invoicing</p>
+          </div>
+        </div>
+        <button
+          onClick={() => { setActiveTab('create'); resetWizard() }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          New Invoice
+        </button>
+      </header>
 
-        <TabSystem tabs={TABS} activeTabId={activeTab} onTabChange={setActiveTab} className="mb-2" />
+      <div className="px-8 py-3 border-b border-border flex gap-1">
+        {(['invoices', 'deals', 'create'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => { setActiveTab(tab); if (tab === 'create') resetWizard() }}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize ${
+              activeTab === tab ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+            }`}
+          >
+            {tab === 'create' ? 'AI Create' : tab === 'deals' ? 'Deals Pipeline' : 'Invoices'}
+          </button>
+        ))}
+      </div>
 
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
         {activeTab === 'invoices' && (
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 w-full min-w-0">
-              {INVOICE_KPI.map((item) => (
-                <Card key={item.label} className="min-w-0 overflow-visible">
-                  <CardContent className="p-4">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--inkblot-semantic-color-text-secondary)]">
-                      {item.label}
-                    </span>
-                    <p className="mt-1 text-2xl font-semibold text-[var(--inkblot-semantic-color-text-primary)]">
-                      {item.value}
-                    </p>
-                    <span className={`text-[10px] mt-1 block ${item.changeVariant === 'success' ? 'text-[var(--inkblot-semantic-color-status-success)]' : item.changeVariant === 'error' ? 'text-[var(--inkblot-semantic-color-status-error)]' : 'text-[var(--inkblot-semantic-color-text-secondary)]'}`}>
-                      {item.change}
-                    </span>
-                  </CardContent>
-                </Card>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'Total Revenue', value: '$46.7K', sub: 'This month' },
+                { label: 'Outstanding', value: '$12.3K', sub: '3 invoices' },
+                { label: 'Overdue', value: '$7.8K', sub: '1 invoice' },
+                { label: 'Avg. Payment', value: '12d', sub: '-2d vs prior' },
+              ].map((kpi) => (
+                <div key={kpi.label} className="glass rounded-xl p-4">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
+                  <p className="text-2xl font-semibold text-foreground mt-1">{kpi.value}</p>
+                  <span className="text-[10px] text-citrus-lime">{kpi.sub}</span>
+                </div>
               ))}
             </div>
-
-            <div className="overflow-x-auto min-w-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_INVOICES.map((inv) => {
-                  const st = STATUS_MAP[inv.status]
-                  const Icon = STATUS_ICON[inv.status]
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="font-mono text-[var(--inkblot-semantic-color-status-warning)]">{inv.id}</TableCell>
-                      <TableCell className="font-medium">{inv.client}</TableCell>
-                      <TableCell className="font-mono">{inv.amount}</TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1.5">
-                          {Icon ? <Icon className="h-3 w-3" /> : null}
-                          {st ? <StatusBadge label={st.label} variant={st.variant} /> : null}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-[var(--inkblot-semantic-color-text-secondary)]">{inv.date}</TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+            <div className="glass rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[80px_1fr_100px_80px_100px] gap-4 px-5 py-3 border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider">
+                <span>Invoice</span><span>Client</span><span>Amount</span><span>Status</span><span>Date</span>
+              </div>
+              {existingInvoices.map((inv) => {
+                const st = statusConfig[inv.status]
+                return (
+                  <div key={inv.id} className="grid grid-cols-[80px_1fr_100px_80px_100px] gap-4 px-5 py-3.5 border-b border-border/50 hover:bg-secondary/30 transition-colors items-center">
+                    <span className="text-xs font-mono text-citrus-lemon">{inv.id}</span>
+                    <span className="text-sm font-medium text-foreground">{inv.client}</span>
+                    <span className="text-sm font-mono text-foreground">{inv.amount}</span>
+                    <span className={`text-xs flex items-center gap-1.5 ${st.color}`}>
+                      <st.icon className="w-3 h-3" />{st.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{inv.date}</span>
+                  </div>
+                )
+              })}
             </div>
-          </div>
+          </>
+        )}
+
+        {activeTab === 'deals' && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'Pipeline Value', value: '$458K', sub: '+12% MoM' },
+                { label: 'Avg. Deal Size', value: '$91.6K', sub: '5 active' },
+                { label: 'Win Rate', value: '68%', sub: 'Last 90 days' },
+                { label: 'Avg. Cycle', value: '34d', sub: '-3d vs prior' },
+              ].map((kpi) => (
+                <div key={kpi.label} className="glass rounded-xl p-4">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
+                  <p className="text-2xl font-semibold text-foreground mt-1">{kpi.value}</p>
+                  <span className="text-[10px] text-citrus-lime">{kpi.sub}</span>
+                </div>
+              ))}
+            </div>
+            <div className="glass rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_100px_120px_80px_40px] gap-4 px-5 py-3 border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider">
+                <span>Deal</span><span>Value</span><span>Stage</span><span>Score</span><span />
+              </div>
+              {deals.map((deal) => (
+                <div key={deal.name} className="grid grid-cols-[1fr_100px_120px_80px_40px] gap-4 px-5 py-3.5 border-b border-border/50 hover:bg-secondary/30 transition-colors items-center">
+                  <span className="text-sm font-medium text-foreground">{deal.name}</span>
+                  <span className="text-sm font-mono text-foreground">{deal.value}</span>
+                  <span className="text-xs text-muted-foreground">{deal.stage}</span>
+                  <CircularScore
+                    label=""
+                    value={deal.confidence}
+                    color={
+                      deal.confidence >= 70
+                        ? 'var(--inkblot-dark-color-status-success)'
+                        : deal.confidence >= 50
+                          ? 'var(--inkblot-dark-color-status-warning)'
+                          : 'var(--inkblot-color-accent-citron-600)'
+                    }
+                    size={32}
+                  />
+                  <TrendIcon trend={deal.trend} />
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {activeTab === 'create' && !generatedInvoice && (
-          <div className="mx-auto w-full max-w-lg py-4">
-            <div className="mb-6 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[var(--inkblot-semantic-color-status-warning)]" />
-              <span className="text-sm font-semibold text-[var(--inkblot-semantic-color-text-primary)]">AI Invoice Wizard</span>
-              <span className="ml-auto text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
-                Step {wizardStep + 1} of {WIZARD_STEPS.length}
+          <div className="max-w-lg mx-auto py-8">
+            <div className="flex items-center gap-2 mb-8">
+              <Sparkles className="w-5 h-5 text-citrus-lemon" />
+              <h2 className="text-sm font-semibold text-foreground">AI Invoice Wizard</h2>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                Step {wizardStep + 1} of {wizardSteps.length}
               </span>
             </div>
-
-            <Progress value={((wizardStep + 1) / WIZARD_STEPS.length) * 100} className="mb-6" />
-
-            <div className="flex flex-col gap-4">
-              <label className="text-sm font-medium text-[var(--inkblot-semantic-color-text-primary)]">
-                {currentStep?.question}
-              </label>
+            <div className="flex gap-1 mb-8">
+              {wizardSteps.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full transition-colors ${i <= wizardStep ? 'bg-citrus-lemon' : 'bg-surface-3'}`}
+                />
+              ))}
+            </div>
+            <div className="space-y-4">
+              <label className="text-sm font-medium text-foreground">{currentStep?.question}</label>
               {currentStep?.multiline ? (
-                <Textarea
+                <textarea
                   value={currentValue}
                   onChange={(e) => setFormData((d) => ({ ...d, [currentStep.field]: e.target.value }))}
                   placeholder={currentStep.placeholder}
                   rows={4}
+                  className="w-full bg-surface-1 border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 />
               ) : (
-                <Input
+                <input
                   value={currentValue}
                   onChange={(e) => setFormData((d) => ({ ...d, [currentStep!.field]: e.target.value }))}
                   placeholder={currentStep?.placeholder}
+                  className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   onKeyDown={(e) => e.key === 'Enter' && currentValue.trim() && handleNext()}
                 />
               )}
               <div className="flex gap-3 pt-2">
                 {wizardStep > 0 && (
-                  <Button variant="secondary" onClick={() => setWizardStep((s) => s - 1)}>
+                  <button
+                    onClick={() => setWizardStep((s) => s - 1)}
+                    className="px-4 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:bg-secondary/30 transition-colors"
+                  >
                     Back
-                  </Button>
+                  </button>
                 )}
-                <Button
+                <button
                   onClick={handleNext}
-                  disabled={(!currentValue.trim() && wizardStep < WIZARD_STEPS.length - 1) || generating}
+                  disabled={!currentValue.trim() && wizardStep < wizardSteps.length - 1}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
                 >
-                  {wizardStep === WIZARD_STEPS.length - 1 ? (
+                  {wizardStep === wizardSteps.length - 1 ? (
                     generating ? (
-                      <span className="flex items-center gap-2">Generating\u2026</span>
+                      <><Loader2 className="w-3 h-3 animate-spin" />Generating…</>
                     ) : (
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="h-3 w-3" />
-                        Generate Invoice
-                      </span>
+                      <><Sparkles className="w-3 h-3" />Generate Invoice</>
                     )
                   ) : (
-                    <span className="flex items-center gap-2">
-                      Next
-                      <ArrowRight className="h-3 w-3" />
-                    </span>
+                    <>Next<ArrowRight className="w-3 h-3" /></>
                   )}
-                </Button>
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'create' && generatedInvoice && (
-          <div className="mx-auto w-full max-w-2xl py-4">
-            <div className="mb-6 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm font-medium text-[var(--inkblot-semantic-color-text-primary)]">
-                <CheckCircle2 className="h-4 w-4 text-[var(--inkblot-semantic-color-status-success)]" />
-                Invoice Generated
-              </span>
+          <div className="max-w-2xl mx-auto py-4">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-citrus-lime" />
+                <span className="text-sm font-medium text-foreground">Invoice Generated</span>
+              </div>
               <div className="flex gap-2">
-                <Button variant="secondary">
-                  <Download className="mr-1.5 h-3 w-3" />
-                  Export PDF
-                </Button>
-                <Button>
-                  <Send className="mr-1.5 h-3 w-3" />
-                  Send to Client
-                </Button>
+                <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-xs text-foreground hover:bg-secondary/80 transition-colors">
+                  <Download className="w-3 h-3" />Export PDF
+                </button>
+                <button onClick={handleSendToClient} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+                  <Send className="w-3 h-3" />Send to Client
+                </button>
               </div>
             </div>
-
-            <Card>
-              <CardContent className="space-y-6 p-8">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-[var(--inkblot-semantic-color-text-primary)]">INVOICE</h3>
-                    <p className="mt-1 font-mono text-xs text-[var(--inkblot-semantic-color-status-warning)]">{generatedInvoice.invoiceNumber}</p>
+            <div className="glass rounded-xl p-8 space-y-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">INVOICE</h3>
+                  <p className="text-xs font-mono text-citrus-lemon mt-1">{generatedInvoice.invoiceNumber}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-foreground">Your Company</p>
+                  <p className="text-xs text-muted-foreground">hello@company.com</p>
+                </div>
+              </div>
+              <div className="border-t border-border pt-4 grid grid-cols-2 gap-8">
+                <div>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Bill To</span>
+                  <p className="text-sm font-medium text-foreground mt-1">{generatedInvoice.clientName}</p>
+                  <p className="text-xs text-muted-foreground">{generatedInvoice.clientEmail}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Due Date</span>
+                  <p className="text-sm text-foreground mt-1">{generatedInvoice.dueDate}</p>
+                </div>
+              </div>
+              <div className="border-t border-border pt-4">
+                <div className="grid grid-cols-[1fr_60px_80px_80px] gap-4 pb-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <span>Description</span><span>Qty</span><span>Rate</span><span className="text-right">Amount</span>
+                </div>
+                {generatedInvoice.items.map((item, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_60px_80px_80px] gap-4 py-2.5 border-t border-border/30">
+                    <span className="text-sm text-foreground">{item.description}</span>
+                    <span className="text-sm font-mono text-foreground">{item.qty}</span>
+                    <span className="text-sm font-mono text-foreground">${item.rate}</span>
+                    <span className="text-sm font-mono text-foreground text-right">${item.amount.toLocaleString()}</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-[var(--inkblot-semantic-color-text-primary)]">Your Company</p>
-                    <p className="text-xs text-[var(--inkblot-semantic-color-text-secondary)]">hello@company.com</p>
+                ))}
+              </div>
+              <div className="border-t border-border pt-4 flex justify-end">
+                <div className="w-48 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-mono text-foreground">${generatedInvoice.subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax (10%)</span>
+                    <span className="font-mono text-foreground">${generatedInvoice.tax.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold border-t border-border pt-2">
+                    <span className="text-foreground">Total</span>
+                    <span className="font-mono text-citrus-lime">${generatedInvoice.total.toLocaleString()}</span>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-8 border-t border-[var(--inkblot-semantic-color-border-default)] pt-4">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--inkblot-semantic-color-text-secondary)]">Bill To</span>
-                    <p className="mt-1 text-sm font-medium text-[var(--inkblot-semantic-color-text-primary)]">{generatedInvoice.clientName}</p>
-                    <p className="text-xs text-[var(--inkblot-semantic-color-text-secondary)]">{generatedInvoice.clientEmail}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--inkblot-semantic-color-text-secondary)]">Due Date</span>
-                    <p className="mt-1 text-sm text-[var(--inkblot-semantic-color-text-primary)]">{generatedInvoice.dueDate}</p>
-                  </div>
+              </div>
+              {generatedInvoice.notes && (
+                <div className="border-t border-border pt-4">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Notes</span>
+                  <p className="text-xs text-muted-foreground mt-1">{generatedInvoice.notes}</p>
                 </div>
-
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Rate</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {generatedInvoice.items.map((item, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell className="font-mono">{item.qty}</TableCell>
-                        <TableCell className="font-mono">${item.rate}</TableCell>
-                        <TableCell className="text-right font-mono">${item.amount.toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                <div className="flex justify-end border-t border-[var(--inkblot-semantic-color-border-default)] pt-4">
-                  <div className="w-48 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[var(--inkblot-semantic-color-text-secondary)]">Subtotal</span>
-                      <span className="font-mono">${generatedInvoice.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[var(--inkblot-semantic-color-text-secondary)]">Tax (10%)</span>
-                      <span className="font-mono">${generatedInvoice.tax.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between border-t border-[var(--inkblot-semantic-color-border-default)] pt-2 text-sm font-bold">
-                      <span>Total</span>
-                      <span className="font-mono text-[var(--inkblot-semantic-color-status-success)]">${generatedInvoice.total.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {generatedInvoice.notes && (
-                  <div className="border-t border-[var(--inkblot-semantic-color-border-default)] pt-4">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--inkblot-semantic-color-text-secondary)]">Notes</span>
-                    <p className="mt-1 text-xs text-[var(--inkblot-semantic-color-text-secondary)]">{generatedInvoice.notes}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <button
-              onClick={resetWizard}
-              className="mt-4 text-xs text-[var(--inkblot-semantic-color-text-secondary)] hover:text-[var(--inkblot-semantic-color-text-primary)]"
-            >
-              \u2190 Create another invoice
+              )}
+            </div>
+            <button onClick={resetWizard} className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              ← Create another invoice
             </button>
           </div>
         )}

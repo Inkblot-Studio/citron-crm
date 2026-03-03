@@ -1,45 +1,62 @@
+import { CircularScore, Button, Input, Select, Label } from '@citron-systems/citron-ui'
+import * as Popover from '@radix-ui/react-popover'
+import { Users, Search, Filter, Plus, Building2, Star } from 'lucide-react'
 import { useState } from 'react'
-import {
-  PageHeader,
-  PageHeaderActionButton,
-  SearchBar,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  CircularScore,
-  Badge,
-} from '@citron-systems/citron-ui'
-import { Users, Star, Building2 } from 'lucide-react'
-import { MOCK_CONTACTS } from '@/lib/mock-engine'
+import { useToast } from '@/lib/ToastContext'
 
-const TAG_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'default' | 'secondary' | 'outline'> = {
-  Champion: 'success',
-  'Decision Maker': 'warning',
-  'Technical Buyer': 'default',
-  'At Risk': 'error',
-  'Executive Sponsor': 'warning',
-  'Budget Holder': 'success',
-  'End User': 'secondary',
+interface Contact {
+  id: string
+  name: string
+  company: string
+  role: string
+  score: number
+  tags: string[]
+  lastActivity: string
+  starred: boolean
 }
 
-function scoreTone(score: number): 'success' | 'warning' | 'error' {
-  if (score >= 70) return 'success'
-  if (score >= 50) return 'warning'
-  return 'error'
+const initialContacts: Contact[] = [
+  { id: '1', name: 'Sarah Chen', company: 'Acme Corp', role: 'VP of Engineering', score: 92, tags: ['Champion', 'Decision Maker'], lastActivity: '2h ago', starred: true },
+  { id: '2', name: 'Marcus Johnson', company: 'TechVentures', role: 'CTO', score: 78, tags: ['Technical Buyer'], lastActivity: '1d ago', starred: false },
+  { id: '3', name: 'Elena Rodriguez', company: 'GlobalTech Inc', role: 'Head of Product', score: 45, tags: ['At Risk'], lastActivity: '12d ago', starred: false },
+  { id: '4', name: 'David Park', company: 'DataFlow Labs', role: 'CEO', score: 67, tags: ['Executive Sponsor'], lastActivity: '3h ago', starred: true },
+  { id: '5', name: 'Lisa Wang', company: 'StartupXYZ', role: 'COO', score: 88, tags: ['Champion', 'Budget Holder'], lastActivity: '5h ago', starred: false },
+  { id: '6', name: 'James Miller', company: 'Acme Corp', role: 'Engineering Manager', score: 71, tags: ['End User'], lastActivity: '6h ago', starred: false },
+  { id: '7', name: 'Anna Fischer', company: 'GlobalTech Inc', role: 'CFO', score: 34, tags: ['At Risk', 'Budget Holder'], lastActivity: '21d ago', starred: false },
+  { id: '8', name: 'Tom Nakamura', company: 'TechVentures', role: 'VP Sales', score: 83, tags: ['Decision Maker'], lastActivity: '8h ago', starred: true },
+]
+
+const tagColors: Record<string, string> = {
+  Champion: 'bg-citrus-lime/10 text-citrus-lime',
+  'Decision Maker': 'bg-citrus-lemon/10 text-citrus-lemon',
+  'Technical Buyer': 'bg-status-info/10 text-status-info',
+  'At Risk': 'bg-destructive/10 text-destructive',
+  'Executive Sponsor': 'bg-citrus-orange/10 text-citrus-orange',
+  'Budget Holder': 'bg-citrus-green/10 text-citrus-green',
+  'End User': 'bg-secondary text-secondary-foreground',
 }
 
-export function ContactsPage() {
+const allTags = ['Champion', 'Decision Maker', 'Technical Buyer', 'At Risk', 'Executive Sponsor', 'Budget Holder', 'End User']
+const allCompanies = [...new Set(initialContacts.map((c) => c.company))]
+
+export default function ContactsPage() {
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts)
   const [search, setSearch] = useState('')
-  const [contacts, setContacts] = useState(MOCK_CONTACTS)
+  const [addOpen, setAddOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterTag, setFilterTag] = useState<string>('')
+  const [filterCompany, setFilterCompany] = useState<string>('')
+  const [newContact, setNewContact] = useState({ name: '', company: '', role: '', tags: [] as string[] })
+  const { addToast } = useToast()
 
-  const filtered = contacts.filter(
-    (c) =>
+  const filtered = contacts.filter((c) => {
+    const matchesSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.company.toLowerCase().includes(search.toLowerCase())
-  )
+    const matchesTag = !filterTag || c.tags.includes(filterTag)
+    const matchesCompany = !filterCompany || c.company === filterCompany
+    return matchesSearch && matchesTag && matchesCompany
+  })
 
   const toggleStar = (id: string) => {
     setContacts((prev) =>
@@ -47,81 +64,224 @@ export function ContactsPage() {
     )
   }
 
+  const handleAddContact = () => {
+    if (!newContact.name.trim()) return
+    const contact: Contact = {
+      id: crypto.randomUUID(),
+      name: newContact.name.trim(),
+      company: newContact.company.trim() || 'New Company',
+      role: newContact.role.trim() || 'Contact',
+      score: Math.floor(Math.random() * 40) + 50,
+      tags: newContact.tags.length ? newContact.tags : ['End User'],
+      lastActivity: 'Just now',
+      starred: false,
+    }
+    setContacts((prev) => [contact, ...prev])
+    setNewContact({ name: '', company: '', role: '', tags: [] })
+    setAddOpen(false)
+    addToast({ title: 'Contact added', variant: 'success' })
+  }
+
+  const clearFilters = () => {
+    setFilterTag('')
+    setFilterCompany('')
+  }
+
+  const getScoreColor = (score: number) =>
+    score >= 70
+      ? 'var(--inkblot-semantic-color-status-success)'
+      : score >= 50
+        ? 'var(--inkblot-semantic-color-status-warning)'
+        : 'var(--inkblot-color-accent-citron-600)'
+
+  const dropdownPanel = 'mt-2 p-4 glass rounded-xl border border-border shadow-lg z-50'
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 min-w-0">
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="Contacts"
-          subtitle={`${contacts.length} contacts \u00B7 5 organizations`}
-          icon={
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--inkblot-radius-md)] bg-[var(--inkblot-semantic-color-status-info)]">
-              <Users className="h-5 w-5 text-[var(--inkblot-semantic-color-text-inverse)]" />
-            </div>
-          }
-          action={<PageHeaderActionButton label="Add Contact" onClick={() => {}} />}
-        />
-
-        <SearchBar
-          placeholder="Search contacts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <div className="overflow-x-auto min-w-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10" />
-              <TableHead>Name</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Score</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell>
-                  <button onClick={() => toggleStar(c.id)}>
-                    <Star
-                      className={`h-4 w-4 ${
-                        c.starred
-                          ? 'fill-[var(--inkblot-semantic-color-status-warning)] text-[var(--inkblot-semantic-color-status-warning)]'
-                          : 'text-[var(--inkblot-semantic-color-text-secondary)]'
+    <div className="h-full flex flex-col">
+      <header className="px-8 py-5 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-status-info/10 flex items-center justify-center">
+            <Users className="w-4 h-4 text-status-info" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-foreground">Contacts</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {contacts.length} contacts · {new Set(contacts.map((c) => c.company)).size} organizations
+            </p>
+          </div>
+        </div>
+        <Popover.Root open={addOpen} onOpenChange={setAddOpen}>
+          <Popover.Trigger className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+            <Plus className="w-3 h-3" />
+            Add Contact
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content side="left" align="end" sideOffset={8} collisionPadding={16} className={`w-80 ${dropdownPanel}`}>
+            <p className="text-xs font-medium text-foreground mb-3">Add Contact</p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Name</Label>
+                <Input
+                  value={newContact.name}
+                  onChange={(e) => setNewContact((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Full name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Company</Label>
+                <Input
+                  value={newContact.company}
+                  onChange={(e) => setNewContact((p) => ({ ...p, company: e.target.value }))}
+                  placeholder="Company name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Role</Label>
+                <Input
+                  value={newContact.role}
+                  onChange={(e) => setNewContact((p) => ({ ...p, role: e.target.value }))}
+                  placeholder="Job title"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Tags</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() =>
+                        setNewContact((p) => ({
+                          ...p,
+                          tags: p.tags.includes(tag) ? p.tags.filter((t) => t !== tag) : [...p.tags, tag],
+                        }))
+                      }
+                      className={`text-[10px] px-2 py-1 rounded-full transition-colors ${
+                        newContact.tags.includes(tag)
+                          ? tagColors[tag] || 'bg-secondary text-secondary-foreground'
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                       }`}
-                    />
-                  </button>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{c.name}</span>
-                    <span className="text-[10px] text-[var(--inkblot-semantic-color-text-secondary)]">{c.lastActivity}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1.5 text-[var(--inkblot-semantic-color-text-secondary)]">
-                    <Building2 className="h-3 w-3" />
-                    {c.company}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4 pt-3 border-t border-border">
+              <Button variant="secondary" onClick={() => setAddOpen(false)} className="flex-1 text-xs">
+                Cancel
+              </Button>
+              <Button onClick={handleAddContact} disabled={!newContact.name.trim()} className="flex-1 text-xs">
+                Add Contact
+              </Button>
+            </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </header>
+
+      <div className="px-8 py-3 border-b border-border flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-surface-1 border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder="Search contacts..."
+          />
+        </div>
+        <Popover.Root open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <Popover.Trigger
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs transition-colors ${
+              filterTag || filterCompany
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30'
+            }`}
+          >
+            <Filter className="w-3 h-3" />
+            Filters
+            {(filterTag || filterCompany) && (
+              <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content side="left" align="end" sideOffset={8} collisionPadding={16} className={`w-64 ${dropdownPanel}`}>
+            <p className="text-xs font-medium text-foreground mb-3">Filter Contacts</p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Tag</Label>
+                <Select
+                  options={[{ value: '', label: 'All tags' }, ...allTags.map((t) => ({ value: t, label: t }))]}
+                  value={filterTag}
+                  onChange={(e) => setFilterTag(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">Company</Label>
+                <Select
+                  options={[{ value: '', label: 'All companies' }, ...allCompanies.map((c) => ({ value: c, label: c }))]}
+                  value={filterCompany}
+                  onChange={(e) => setFilterCompany(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border">
+              <Button variant="secondary" onClick={clearFilters} className="w-full text-xs">
+                Clear filters
+              </Button>
+            </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
+
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
+        <div className="glass rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[40px_1fr_140px_120px_1fr_80px] gap-4 px-5 py-3 border-b border-border text-[10px] text-muted-foreground uppercase tracking-wider">
+            <span />
+            <span>Name</span>
+            <span>Company</span>
+            <span>Role</span>
+            <span>Tags</span>
+            <span>Score</span>
+          </div>
+          {filtered.map((c) => (
+            <div
+              key={c.id}
+              className="grid grid-cols-[40px_1fr_140px_120px_1fr_80px] gap-4 px-5 py-3 border-b border-border/50 hover:bg-secondary/30 transition-colors items-center"
+            >
+              <button
+                onClick={() => toggleStar(c.id)}
+                className="w-5 h-5 flex items-center justify-center"
+                aria-label={c.starred ? 'Remove from starred' : 'Add to starred'}
+              >
+                <Star
+                  className={`w-3.5 h-3.5 ${c.starred ? 'text-citrus-lemon fill-citrus-lemon' : 'text-muted-foreground/30 hover:text-citrus-lemon/70'}`}
+                />
+              </button>
+              <div>
+                <span className="text-sm font-medium text-foreground">{c.name}</span>
+                <span className="text-[10px] text-muted-foreground ml-2">{c.lastActivity}</span>
+              </div>
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="w-3 h-3" />
+                {c.company}
+              </span>
+              <span className="text-xs text-muted-foreground">{c.role}</span>
+              <div className="flex flex-wrap gap-1">
+                {c.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${tagColors[tag] || 'bg-secondary text-secondary-foreground'}`}
+                  >
+                    {tag}
                   </span>
-                </TableCell>
-                <TableCell className="text-[var(--inkblot-semantic-color-text-secondary)]">{c.role}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {c.tags.map((tag) => (
-                      <Badge key={tag} variant={TAG_VARIANT[tag] ?? 'secondary'}>
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <CircularScore label="" value={c.score} tone={scoreTone(c.score)} size={32} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                ))}
+              </div>
+              <CircularScore label="" value={c.score} color={getScoreColor(c.score)} size={32} />
+            </div>
+          ))}
         </div>
       </div>
     </div>

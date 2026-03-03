@@ -1,28 +1,21 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useOutletContext, useLocation, useNavigate } from 'react-router-dom'
+import { Suspense, lazy, useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import {
-  MainShell,
-  AppSidebar,
-  EventStreamSidebar,
-  CommandInterface,
+  AppLayout,
   RouteWithErrorBoundary,
   ModuleSkeleton,
   OnboardingWizard,
   GuidedTour,
+  Toaster,
 } from '@citron-systems/citron-ui'
-import type { GuidedTourStep } from '@citron-systems/citron-ui'
+import { ToastProvider, useToast } from '@/lib/ToastContext'
+import type { AppSidebarItem, GuidedTourStep } from '@citron-systems/citron-ui'
 import {
   MessageSquare,
-  BarChart3,
-  Users,
-  Network,
-  Activity,
-  Mail,
   FileText,
-  ListTodo,
-  Workflow,
-  PieChart,
-  Brain,
+  Users,
+  Mail,
+  CheckSquare,
   Settings,
   Building2,
   Briefcase,
@@ -30,52 +23,24 @@ import {
   Globe,
   Megaphone,
 } from 'lucide-react'
-import { useCitronOS } from '@/lib/mock-engine'
-import { CommandProvider, useCommand } from '@/lib/CommandContext'
 
-const HomePage = lazy(() => import('@/pages/HomePage').then((m) => ({ default: m.HomePage })))
-const IntelligenceLabPage = lazy(() =>
-  import('@/pages/IntelligenceLabPage').then((m) => ({ default: m.IntelligenceLabPage }))
-)
-const DealsPage = lazy(() => import('@/pages/DealsPage').then((m) => ({ default: m.DealsPage })))
-const ContactsPage = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })))
-const GraphPage = lazy(() => import('@/pages/GraphPage').then((m) => ({ default: m.GraphPage })))
-const EventsPage = lazy(() => import('@/pages/EventsPage').then((m) => ({ default: m.EventsPage })))
-const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
-const TasksPage = lazy(() => import('@/pages/Tasks').then((m) => ({ default: m.TasksPage })))
-const EmailCampaignsPage = lazy(() =>
-  import('@/pages/EmailCampaigns').then((m) => ({ default: m.EmailCampaignsPage }))
-)
-const InvoicesPage = lazy(() => import('@/pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })))
-const ReportsPage = lazy(() => import('@/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })))
-const AutomationsPage = lazy(() =>
-  import('@/pages/AutomationsPage').then((m) => ({ default: m.AutomationsPage }))
-)
+const HomePage = lazy(() => import('@/pages/HomePage'))
+const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
+const EmailCampaignsPage = lazy(() => import('@/pages/EmailCampaignsPage'))
+const InvoicesPage = lazy(() => import('@/pages/InvoicesPage'))
+const TasksPage = lazy(() => import('@/pages/TasksPage'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
 
-export interface CitronOSContext {
-  entities: import('@/lib/types').GraphNode[]
-  edges: import('@/lib/types').GraphEdge[]
-  events: import('@/lib/types').CitronEvent[]
-  focusEntity: import('@/lib/types').GraphNode
-  setFocusEntity: (entity: import('@/lib/types').GraphNode) => void
-  loading: boolean
-}
-
-const SIDEBAR_ITEMS = [
-  { id: 'home', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
-  { id: 'deals', icon: BarChart3, label: 'Deals', path: '/deals', dataTour: 'nav-deals' },
+const SIDEBAR_ITEMS: AppSidebarItem[] = [
+  { id: 'canvas', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
+  { id: 'invoices', icon: FileText, label: 'Invoices & Deals', path: '/invoices', dataTour: 'nav-invoices' },
   { id: 'contacts', icon: Users, label: 'Contacts', path: '/contacts', dataTour: 'nav-contacts' },
-  { id: 'graph', icon: Network, label: 'Graph', path: '/graph', dataTour: 'nav-graph' },
-  { id: 'events', icon: Activity, label: 'Events', path: '/events', dataTour: 'nav-events' },
   { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
-  { id: 'invoices', icon: FileText, label: 'Invoices', path: '/invoices', dataTour: 'nav-invoices' },
-  { id: 'tasks', icon: ListTodo, label: 'Tasks', path: '/tasks', dataTour: 'nav-tasks' },
-  { id: 'automations', icon: Workflow, label: 'Automations', path: '/automations', dataTour: 'nav-automations' },
-  { id: 'reports', icon: PieChart, label: 'Reports', path: '/reports', dataTour: 'nav-reports' },
-  { id: 'intelligence', icon: Brain, label: 'Intel Lab', path: '/intelligence', dataTour: 'nav-intelligence' },
+  { id: 'tasks', icon: CheckSquare, label: 'Tasks', path: '/tasks', dataTour: 'nav-tasks' },
 ]
 
-const SIDEBAR_BOTTOM_ITEMS = [
+const SIDEBAR_BOTTOM_ITEMS: AppSidebarItem[] = [
   { id: 'settings', icon: Settings, label: 'Settings', path: '/settings', dataTour: 'nav-settings' },
 ]
 
@@ -196,15 +161,15 @@ const TOUR_STEPS: GuidedTourStep[] = [
     position: 'right',
   },
   {
-    target: '[data-tour="event-feed"]',
-    title: 'Real-Time Event Feed',
-    description: 'Stay on top of everything. This feed shows live system events in real time.',
+    target: '[data-tour="right-panel"]',
+    title: 'AI Chat & Events',
+    description: 'Chat with specialized AI agents and track real-time events from this panel.',
     position: 'left',
   },
   {
-    target: '[data-tour="nav-deals"]',
-    title: 'Deals Pipeline',
-    description: 'Track and manage your sales pipeline. View deal stages, confidence scores, and revenue forecasts.',
+    target: '[data-tour="nav-invoices"]',
+    title: 'Invoices & Deals',
+    description: 'Manage your sales pipeline and generate AI-powered invoices.',
     position: 'right',
   },
   {
@@ -220,82 +185,144 @@ const TOUR_STEPS: GuidedTourStep[] = [
     position: 'right',
   },
   {
-    target: '[data-tour="nav-invoices"]',
-    title: 'Invoices',
-    description: 'Generate professional invoices using AI. Just describe the work and the system handles the rest.',
+    target: '[data-tour="nav-tasks"]',
+    title: 'Tasks',
+    description: 'Track and manage tasks across your deals and team.',
     position: 'right',
   },
 ]
 
-function CommandBarConnected() {
-  const { prompt, setPrompt, submitPrompt, isProcessing } = useCommand()
+const AGENTS = [
+  { id: 'general', label: 'General', icon: MessageSquare, description: 'Full CRM assistant' },
+  { id: 'invoices', label: 'Invoices', icon: FileText, description: 'Create & manage invoices' },
+  { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
+  { id: 'contacts', label: 'Contacts', icon: Users, description: 'Contact management' },
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare, description: 'Task automation' },
+]
+
+const AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intelligence')[] }> = {
+  general: { text: "Here's an overview of your CRM data with entity profile and intelligence scores.", cards: ['entity', 'intelligence'] },
+  invoices: { text: "I've pulled up your latest invoice data and deal health metrics.", cards: ['entity', 'intelligence'] },
+  campaigns: { text: 'Analyzing your campaign performance. Here are the key insights.', cards: ['intelligence'] },
+  contacts: { text: "Here's the contact profile and relationship intelligence.", cards: ['entity'] },
+  tasks: { text: "I've reviewed your task queue. Here's what needs attention.", cards: ['intelligence'] },
+}
+
+function PageWrapper({ showRightPanel = true, children }: { showRightPanel?: boolean; children: React.ReactNode }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+
   return (
-    <div className="flex w-full justify-center border-t border-[var(--inkblot-semantic-color-border-default)] bg-[var(--inkblot-semantic-color-background-secondary)] p-4">
-      <div className="flex w-full max-w-2xl flex-col gap-3">
-        <CommandInterface
-          promptValue={prompt}
-          onPromptChange={setPrompt}
-          onPromptSubmit={() => submitPrompt()}
-          isProcessing={isProcessing}
-          placeholder="Ask Citron Intelligence..."
-        />
-        <p className="text-xs text-[var(--inkblot-semantic-color-text-tertiary)]">
-          Citron OS v1.0 — AI-native Revenue & Operations Platform
-        </p>
-      </div>
-    </div>
+    <AppLayout
+      showRightPanel={showRightPanel}
+      sidebarProps={{
+        items: SIDEBAR_ITEMS,
+        bottomItems: SIDEBAR_BOTTOM_ITEMS,
+        activePath: location.pathname,
+        onNavigate: navigate,
+        showStatusDot: true,
+      }}
+      rightPanelProps={{
+        agents: AGENTS,
+        agentResponses: AGENT_RESPONSES,
+        autoRespond: true,
+        autoRespondDelayMs: 800,
+      }}
+    >
+      {children}
+    </AppLayout>
   )
 }
 
-interface AppLayoutShellProps {
-  tourActive: boolean
-  onTourComplete: () => void
-}
-
-function AppLayoutShell({ tourActive, onTourComplete }: AppLayoutShellProps) {
-  const citron = useCitronOS()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const showEventStream = location.pathname !== '/events'
-
+function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTourComplete: () => void }) {
   return (
-    <CommandProvider
-      entities={citron.entities}
-      events={citron.events}
-      onFocusEntity={citron.setFocusEntity}
-    >
-      <MainShell
-        className="min-w-0"
-        navigation={
-          <div data-tour="sidebar" className="relative h-full">
-            <AppSidebar
-              items={SIDEBAR_ITEMS}
-              bottomItems={SIDEBAR_BOTTOM_ITEMS}
-              activePath={location.pathname}
-              onNavigate={navigate}
-              className="h-full"
-            />
-            <div
-              data-tour="system-status"
-              className="pointer-events-none absolute bottom-3 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-[var(--inkblot-semantic-color-status-success)] animate-pulse"
-              title="System Online"
-            />
-          </div>
-        }
-        eventStream={
-          showEventStream ? (
-            <div data-tour="event-feed" className="h-full">
-              <EventStreamSidebar events={citron.events} />
-            </div>
-          ) : null
-        }
-        commandBar={location.pathname === '/' ? <CommandBarConnected /> : null}
-        eventStreamWidth="hidden lg:flex lg:w-80 lg:shrink-0 lg:flex-col lg:border-l lg:border-[var(--inkblot-semantic-color-border-default)]"
-      >
-        <Outlet context={citron} />
-      </MainShell>
+    <>
       {tourActive && <GuidedTour steps={TOUR_STEPS} onComplete={onTourComplete} />}
-    </CommandProvider>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PageWrapper showRightPanel={true}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <HomePage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/contacts"
+          element={
+            <PageWrapper showRightPanel={false}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <ContactsPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/campaigns"
+          element={
+            <PageWrapper showRightPanel={false}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <EmailCampaignsPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/invoices"
+          element={
+            <PageWrapper showRightPanel={false}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <InvoicesPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <PageWrapper showRightPanel={false}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <TasksPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PageWrapper showRightPanel={false}>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                  <SettingsPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <RouteWithErrorBoundary>
+              <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                <NotFound />
+              </Suspense>
+            </RouteWithErrorBoundary>
+          }
+        />
+      </Routes>
+    </>
   )
 }
 
@@ -333,170 +360,26 @@ export default function App() {
   }
 
   return (
-    <>
+    <ToastProvider>
       {!onboardingDone && (
         <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
       )}
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayoutShell tourActive={tourActive} onTourComplete={handleTourComplete} />}>
-            <Route
-              path="/"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <HomePageWithContext />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/deals"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <DealsPageWithContext />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/contacts"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <ContactsPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/graph"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <GraphPageWithContext />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/events"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <EventsPageWithContext />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/campaigns"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <EmailCampaignsPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/invoices"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <InvoicesPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/tasks"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <TasksPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/automations"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <AutomationsPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <ReportsPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/intelligence"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <IntelligenceLabPageWithContext />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <RouteWithErrorBoundary>
-                  <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                    <SettingsPage />
-                  </Suspense>
-                </RouteWithErrorBoundary>
-              }
-            />
-          </Route>
-        </Routes>
+        <AppWithToaster />
+        <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
       </BrowserRouter>
-    </>
+    </ToastProvider>
   )
 }
 
-function HomePageWithContext() {
-  const { entities, events } = useOutletContext<CitronOSContext>()
-  return <HomePage entities={entities} events={events} />
-}
-
-function IntelligenceLabPageWithContext() {
-  const { entities, events, focusEntity, setFocusEntity, loading } =
-    useOutletContext<CitronOSContext>()
+function AppWithToaster() {
+  const { toasts, dismissToast } = useToast()
   return (
-    <IntelligenceLabPage
-      entities={entities}
-      events={events}
-      focusEntity={focusEntity}
-      setFocusEntity={setFocusEntity}
-      loading={loading}
+    <Toaster
+      toasts={toasts}
+      position="bottom-right"
+      onDismiss={dismissToast}
+      className="fixed bottom-4 right-4 z-[100]"
     />
   )
-}
-
-function DealsPageWithContext() {
-  const context = useOutletContext<CitronOSContext>()
-  return <DealsPage {...context} />
-}
-
-function GraphPageWithContext() {
-  const context = useOutletContext<CitronOSContext>()
-  return <GraphPage {...context} />
-}
-
-function EventsPageWithContext() {
-  const context = useOutletContext<CitronOSContext>()
-  return <EventsPage {...context} />
 }
