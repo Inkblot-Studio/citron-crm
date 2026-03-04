@@ -133,9 +133,9 @@ export function transitionToStatus(t: JiraTransition): 'todo' | 'in_progress' | 
   if (cat === 'indeterminate' || cat === 'in-flight') return 'in_progress'
   if (cat === 'new') return 'todo'
   const text = `${(t.to?.name ?? '')} ${(t.name ?? '')}`.toLowerCase()
-  if (/done|complete|resolved|closed|hecho|finaliz|terminad|implementad|cerrar|completar/.test(text)) return 'done'
-  if (/in progress|en progreso|in-flight|indeterminate/.test(text)) return 'in_progress'
-  if (/to do|open|reopen|reabrir|por hacer|pendiente|abierto/.test(text)) return 'todo'
+  if (/done|complete|resolved|closed/.test(text)) return 'done'
+  if (/in progress|in-flight|indeterminate/.test(text)) return 'in_progress'
+  if (/to do|open|reopen/.test(text)) return 'todo'
   return null
 }
 
