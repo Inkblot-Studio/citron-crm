@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { jiraFetch } from '../../../_jira-utils'
+import { jiraFetch } from '../../../../lib/jira-utils'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = req.query.key as string

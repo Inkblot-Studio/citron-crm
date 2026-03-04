@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { jiraFetch } from '../../_jira-utils'
+import { jiraFetch } from '../../../lib/jira-utils'
 
 function textToAdf(text: string) {
   if (!text?.trim()) return undefined

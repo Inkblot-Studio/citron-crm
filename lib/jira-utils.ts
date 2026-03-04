@@ -9,14 +9,6 @@ export function getAuthHeader(creds: JiraCredentials): string {
   return `Basic ${encoded}`
 }
 
-export function corsHeaders(): Record<string, string> {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  }
-}
-
 export async function jiraFetch(
   creds: JiraCredentials,
   path: string,
