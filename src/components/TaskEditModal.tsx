@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useState, useEffect } from 'react'
 import type { Task, TaskPriority } from '@/lib/jira-types'
 import type { JiraConfig } from '@/lib/jira-types'
+import { fetchAssignableUsers } from '@/lib/jira-api'
 
 const priorityConfig = {
   urgent: { label: 'Urgent', jira: 'Highest' },
@@ -32,6 +33,9 @@ export function TaskEditModal({ task, config, open, onOpenChange, onSave, onErro
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
+  const [assigneeId, setAssigneeId] = useState(task.assignee?.id ?? '')
+  const [assignees, setAssignees] = useState<{ id: string; displayName: string }[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
   const [due, setDue] = useState(task.due ?? '')
   const [saving, setSaving] = useState(false)
 
@@ -39,8 +43,21 @@ export function TaskEditModal({ task, config, open, onOpenChange, onSave, onErro
     setTitle(task.title)
     setDescription(task.description ?? '')
     setPriority(task.priority)
+    setAssigneeId(task.assignee?.id ?? '')
     setDue(task.due ?? '')
   }, [task])
+
+  useEffect(() => {
+    if (open && config && task.project?.key) {
+      setLoadingUsers(true)
+      fetchAssignableUsers(config, task.project.key)
+        .then((list) => setAssignees(list))
+        .catch(() => setAssignees([]))
+        .finally(() => setLoadingUsers(false))
+    } else {
+      setAssignees([])
+    }
+  }, [open, config, task.project?.key])
 
   const handleSave = async () => {
     setSaving(true)
@@ -49,6 +66,7 @@ export function TaskEditModal({ task, config, open, onOpenChange, onSave, onErro
         summary: title,
         description: description || undefined,
         priority: priorityConfig[priority].jira,
+        assigneeId: assigneeId || null,
         duedate: due || null,
       })
       onSave()
@@ -70,6 +88,18 @@ export function TaskEditModal({ task, config, open, onOpenChange, onSave, onErro
             <div className="space-y-1.5">
               <Label className="text-[10px]">Title</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px]">Assignee</Label>
+              <Select
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...assignees.map((u) => ({ value: u.id, label: u.displayName })),
+                ]}
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                disabled={loadingUsers}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px]">Description</Label>

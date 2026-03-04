@@ -76,9 +76,15 @@ export default function TasksPage() {
     setToggling(task.id)
     try {
       const transitions = await getTransitions(config, task.id)
-      const toName = (t: { to?: { name?: string }; name?: string }) => (t.to?.name ?? t.name ?? '').toLowerCase()
-      const doneTransition = transitions.find((t) => /done|complete|resolved|closed/.test(toName(t)))
-      const todoTransition = transitions.find((t) => /to do|open|reopen|in progress/.test(toName(t)))
+      const toText = (t: { to?: { name?: string }; name?: string }) => {
+        const target = (t.to?.name ?? '').toLowerCase()
+        const name = (t.name ?? '').toLowerCase()
+        return `${target} ${name}`
+      }
+      const doneRe = /done|complete|resolved|closed|resolver|cerrar|completar/
+      const todoRe = /to do|open|reopen|in progress|reabrir|en progreso|por hacer/
+      const doneTransition = transitions.find((t) => doneRe.test(toText(t)))
+      const todoTransition = transitions.find((t) => todoRe.test(toText(t)))
       const transition = targetStatus === 'done' ? doneTransition : todoTransition
       if (transition) {
         await transitionJiraIssue(config, task.id, transition.id)

@@ -2,7 +2,7 @@ import { Button, Input, Label, Select } from '@citron-systems/citron-ui'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useState, useEffect } from 'react'
 import type { JiraConfig } from '@/lib/jira-types'
-import { fetchJiraProjects, createJiraIssue } from '@/lib/jira-api'
+import { fetchJiraProjects, fetchAssignableUsers, createJiraIssue } from '@/lib/jira-api'
 
 const priorityOptions = [
   { value: 'Highest', label: 'Urgent' },
@@ -23,11 +23,14 @@ interface TaskCreateModalProps {
 export function TaskCreateModal({ config, open, onOpenChange, onCreated, onError }: TaskCreateModalProps) {
   const [projects, setProjects] = useState<{ key: string; name: string }[]>([])
   const [projectKey, setProjectKey] = useState('')
+  const [assignees, setAssignees] = useState<{ id: string; displayName: string }[]>([])
+  const [assigneeId, setAssigneeId] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('Medium')
   const [due, setDue] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(false)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -44,6 +47,20 @@ export function TaskCreateModal({ config, open, onOpenChange, onCreated, onError
     }
   }, [open, config])
 
+  useEffect(() => {
+    if (open && config && projectKey) {
+      setLoadingUsers(true)
+      setAssigneeId('')
+      fetchAssignableUsers(config, projectKey)
+        .then((list) => setAssignees(list))
+        .catch(() => { setAssignees([]); onError('Failed to load team members') })
+        .finally(() => setLoadingUsers(false))
+    } else {
+      setAssignees([])
+      setAssigneeId('')
+    }
+  }, [open, config, projectKey])
+
   const handleCreate = async () => {
     if (!title.trim()) return
     setCreating(true)
@@ -52,12 +69,14 @@ export function TaskCreateModal({ config, open, onOpenChange, onCreated, onError
         projectKey,
         summary: title.trim(),
         description: description.trim() || undefined,
+        assigneeId: assigneeId || undefined,
         priority: priority || undefined,
         duedate: due || undefined,
         issuetype: 'Task',
       })
       setTitle('')
       setDescription('')
+      setAssigneeId('')
       setDue('')
       onCreated()
       onOpenChange(false)
@@ -69,6 +88,10 @@ export function TaskCreateModal({ config, open, onOpenChange, onCreated, onError
   }
 
   const projectOptions = projects.map((p) => ({ value: p.key, label: `${p.name} (${p.key})` }))
+  const assigneeOptions = [
+    { value: '', label: 'Unassigned' },
+    ...assignees.map((u) => ({ value: u.id, label: u.displayName })),
+  ]
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -84,6 +107,15 @@ export function TaskCreateModal({ config, open, onOpenChange, onCreated, onError
                 value={projectKey}
                 onChange={(e) => setProjectKey(e.target.value)}
                 disabled={loading}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px]">Assignee</Label>
+              <Select
+                options={assigneeOptions}
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                disabled={loadingUsers}
               />
             </div>
             <div className="space-y-1.5">

@@ -153,6 +153,28 @@ export async function transitionJiraIssue(config: JiraConfig, key: string, trans
   }
 }
 
+export async function fetchAssignableUsers(
+  config: JiraConfig,
+  projectKey: string
+): Promise<{ id: string; displayName: string }[]> {
+  const res = await fetch(`${API_BASE}/jira/users/assignable`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      domain: config.domain,
+      email: config.email,
+      apiToken: config.apiToken,
+      projectKey,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Failed to fetch assignable users')
+  }
+  const data = await res.json()
+  return data.users ?? []
+}
+
 export async function fetchJiraProjects(config: JiraConfig): Promise<{ key: string; name: string; id: string }[]> {
   const res = await fetch(`${API_BASE}/jira/projects`, {
     method: 'POST',
