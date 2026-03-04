@@ -15,23 +15,28 @@ function textToAdf(text: string) {
   }
 }
 
+function setCors(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res)
   const key = req.query.key as string
   if (!key) {
-    return res.status(400).json({ error: 'Missing issue key' }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(400).json({ error: 'Missing issue key' })
   }
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).json({ ok: true }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(200).json({ ok: true })
   }
 
   if (req.method !== 'PUT') {
-    return res.status(405).json({ error: 'Method not allowed' }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const { domain, email, apiToken, summary, description, assigneeId, priority, duedate } = req.body || {}
   if (!domain || !email || !apiToken) {
-    return res.status(400).json({ error: 'Missing domain, email, or apiToken' }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(400).json({ error: 'Missing domain, email, or apiToken' })
   }
 
   const fields: Record<string, unknown> = {}
@@ -42,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (duedate !== undefined) fields.duedate = duedate || null
 
   if (Object.keys(fields).length === 0) {
-    return res.status(400).json({ error: 'No fields to update' }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(400).json({ error: 'No fields to update' })
   }
 
   try {
@@ -54,11 +59,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
       const errMsg = data.errors ? Object.values(data.errors).flat().join(', ') : data.errorMessages?.[0] || 'Update failed'
-      return res.status(response.status).json({ error: errMsg }).setHeader('Access-Control-Allow-Origin', '*')
+      return res.status(response.status).json({ error: errMsg })
     }
 
     return res.status(204).end()
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to update issue' }).setHeader('Access-Control-Allow-Origin', '*')
+    return res.status(500).json({ error: 'Failed to update issue' })
   }
 }
