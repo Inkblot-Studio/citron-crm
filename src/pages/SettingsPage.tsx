@@ -1,6 +1,118 @@
-import { Settings, User, Bell, Shield, Palette, Globe, Key, Database } from 'lucide-react'
+import { Settings, User, Bell, Shield, Palette, Globe, Key, Database, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/lib/ToastContext'
+import { useJiraConfig } from '@/lib/JiraContext'
+import { verifyJiraConnection } from '@/lib/jira-api'
+
+function IntegrationsSection() {
+  const { config, isConnected, saveConfig, clearConfig } = useJiraConfig()
+  const { addToast } = useToast()
+  const [domain, setDomain] = useState(config?.domain ?? '')
+  const [email, setEmail] = useState(config?.email ?? '')
+  const [apiToken, setApiToken] = useState(config?.apiToken ?? '')
+  const [testing, setTesting] = useState(false)
+
+  const handleConnect = async () => {
+    const d = domain.trim().replace(/\/$/, '')
+    if (!d || !email.trim() || !apiToken.trim()) {
+      addToast({ title: 'Fill in all fields', variant: 'error' })
+      return
+    }
+    setTesting(true)
+    const result = await verifyJiraConnection({ domain: d, email: email.trim(), apiToken: apiToken.trim() })
+    setTesting(false)
+    if (result.ok) {
+      saveConfig({ domain: d, email: email.trim(), apiToken: apiToken.trim() })
+      addToast({ title: 'Jira connected', variant: 'success' })
+    } else {
+      addToast({ title: result.error ?? 'Connection failed', variant: 'error' })
+    }
+  }
+
+  const handleDisconnect = () => {
+    clearConfig()
+    setDomain('')
+    setEmail('')
+    setApiToken('')
+    addToast({ title: 'Jira disconnected', variant: 'info' })
+  }
+
+  return (
+    <div className="max-w-lg space-y-5">
+      <h2 className="text-sm font-semibold text-foreground">Integrations</h2>
+      <p className="text-xs text-muted-foreground">Connect external tools to sync data with Citron CRM.</p>
+      <div className="glass rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#2684FF]/10 flex items-center justify-center">
+            <span className="text-lg font-bold text-[#2684FF]">J</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Jira</p>
+            <p className="text-[10px] text-muted-foreground">Sync tasks and issues from Jira Cloud</p>
+          </div>
+        </div>
+        {isConnected ? (
+          <div className="space-y-3 pt-2 border-t border-border">
+            <p className="text-xs text-muted-foreground">Connected to {config?.domain}</p>
+            <button
+              onClick={handleDisconnect}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">Jira URL</label>
+              <input
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder="https://your-domain.atlassian.net"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">API Token</label>
+              <input
+                type="password"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                placeholder="Your Jira API token"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <a
+                href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-primary hover:underline flex items-center gap-1"
+              >
+                Create API token <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <button
+              onClick={handleConnect}
+              disabled={testing}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {testing ? 'Connecting...' : 'Connect'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const sections = [
   { key: 'profile', label: 'Profile', icon: User },
@@ -129,7 +241,8 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeSection !== 'profile' && activeSection !== 'appearance' && (
+          {activeSection === 'integrations' && <IntegrationsSection />}
+          {activeSection !== 'profile' && activeSection !== 'appearance' && activeSection !== 'integrations' && (
             <div className="flex items-center justify-center h-60">
               <div className="text-center">
                 <div className="w-12 h-12 rounded-xl bg-surface-2 flex items-center justify-center mx-auto mb-3">
