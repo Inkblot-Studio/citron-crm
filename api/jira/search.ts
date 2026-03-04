@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { jiraFetch } from '../../lib/jira-utils'
+import { jiraFetch } from './_utils'
 
 const DEFAULT_FIELDS = ['summary', 'status', 'assignee', 'priority', 'duedate', 'project', 'labels', 'issuetype', 'description', 'created', 'updated']
 

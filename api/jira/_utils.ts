@@ -4,9 +4,12 @@ export interface JiraCredentials {
   apiToken: string
 }
 
+function base64Encode(str: string): string {
+  return Buffer.from(str, 'utf-8').toString('base64')
+}
+
 export function getAuthHeader(creds: JiraCredentials): string {
-  const encoded = Buffer.from(`${creds.email}:${creds.apiToken}`).toString('base64')
-  return `Basic ${encoded}`
+  return `Basic ${base64Encode(`${creds.email}:${creds.apiToken}`)}`
 }
 
 export async function jiraFetch(
