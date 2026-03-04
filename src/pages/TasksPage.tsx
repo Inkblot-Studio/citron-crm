@@ -1,4 +1,5 @@
 import { Button } from '@citron-systems/citron-ui'
+import * as Popover from '@radix-ui/react-popover'
 import {
   CheckSquare,
   Plus,
@@ -12,6 +13,7 @@ import {
   Settings,
   FolderKanban,
   Tag,
+  ChevronDown,
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
@@ -22,7 +24,9 @@ import {
   updateJiraIssue,
   getTransitions,
   transitionJiraIssue,
+  transitionToStatus,
 } from '@/lib/jira-api'
+import type { JiraTransition } from '@/lib/jira-api'
 import type { Task, TaskPriority } from '@/lib/jira-types'
 import { TaskEditModal } from '@/components/TaskEditModal'
 import { TaskCreateModal } from '@/components/TaskCreateModal'
@@ -48,7 +52,9 @@ export default function TasksPage() {
   const [error, setError] = useState<string | null>(null)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [toggling, setToggling] = useState<string | null>(null)
+  const [statusPopoverTask, setStatusPopoverTask] = useState<string | null>(null)
+  const [transitions, setTransitions] = useState<JiraTransition[]>([])
+  const [loadingTransition, setLoadingTransition] = useState<string | null>(null)
 
   const loadTasks = useCallback(async () => {
     if (!config) return
@@ -70,37 +76,41 @@ export default function TasksPage() {
     else setTasks([])
   }, [config, loadTasks])
 
-  const handleToggleStatus = async (task: Task) => {
+  const handleStatusPopoverOpen = useCallback(
+    async (open: boolean, task: Task) => {
+      if (!open) {
+        setStatusPopoverTask(null)
+        setTransitions([])
+        return
+      }
+      setStatusPopoverTask(task.id)
+      setTransitions([])
+      if (!config) return
+      try {
+        const list = await getTransitions(config, task.id)
+        setTransitions(list)
+      } catch {
+        addToast({ title: 'Failed to load transitions', variant: 'error' })
+      }
+    },
+    [config, addToast]
+  )
+
+  const handleApplyTransition = async (task: Task, transition: JiraTransition) => {
     if (!config) return
-    const targetStatus = task.status === 'done' ? 'todo' : 'done'
-    setToggling(task.id)
+    setLoadingTransition(task.id)
     try {
-      const transitions = await getTransitions(config, task.id)
-      const toText = (t: { to?: { name?: string }; name?: string }) => {
-        const target = (t.to?.name ?? '').toLowerCase()
-        const name = (t.name ?? '').toLowerCase()
-        return `${target} ${name}`
-      }
-      const doneRe = /done|complete|resolved|closed|resolver|cerrar|completar/
-      const todoRe = /to do|open|reopen|in progress|reabrir|en progreso|por hacer/
-      const doneTransition = transitions.find((t) => doneRe.test(toText(t)))
-      const todoTransition = transitions.find((t) => todoRe.test(toText(t)))
-      const transition = targetStatus === 'done' ? doneTransition : todoTransition
-      if (transition) {
-        await transitionJiraIssue(config, task.id, transition.id)
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === task.id ? { ...t, status: targetStatus } : t
-          )
-        )
-        addToast({ title: targetStatus === 'done' ? 'Task completed' : 'Task reopened', variant: 'success' })
-      } else {
-        addToast({ title: 'Transition not available', variant: 'warning' })
-      }
+      await transitionJiraIssue(config, task.id, transition.id)
+      const newStatus = transitionToStatus(transition) ?? task.status
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
+      )
+      setStatusPopoverTask(null)
+      addToast({ title: `Status: ${transition.name}`, variant: 'success' })
     } catch (e) {
-      addToast({ title: e instanceof Error ? e.message : 'Failed to update', variant: 'error' })
+      addToast({ title: e instanceof Error ? e.message : 'Transition failed', variant: 'error' })
     } finally {
-      setToggling(null)
+      setLoadingTransition(null)
     }
   }
 
@@ -208,7 +218,14 @@ export default function TasksPage() {
                   <div className="space-y-2">
                     {groupTasks.map((task) => {
                       const p = priorityConfig[task.priority]
-                      const isToggling = toggling === task.id
+                      const isPopoverOpen = statusPopoverTask === task.id
+                      const isLoading = loadingTransition === task.id
+                      const StatusIcon =
+                        group.key === 'done'
+                          ? CheckCircle2
+                          : group.key === 'in_progress'
+                            ? Clock
+                            : Circle
                       return (
                         <div
                           key={task.id}
@@ -216,18 +233,67 @@ export default function TasksPage() {
                             group.key === 'done' ? 'opacity-60' : ''
                           }`}
                         >
-                          <button
-                            onClick={() => !isToggling && handleToggleStatus(task)}
-                            disabled={isToggling}
-                            className="shrink-0 mt-0.5"
-                            aria-label={task.status === 'done' ? 'Mark incomplete' : 'Mark complete'}
+                          <Popover.Root
+                            open={isPopoverOpen}
+                            onOpenChange={(open) => handleStatusPopoverOpen(open, task)}
                           >
-                            {group.key === 'done' ? (
-                              <CheckCircle2 className="w-4 h-4 text-citrus-lime" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground/40 hover:text-citrus-lime transition-colors" />
-                            )}
-                          </button>
+                            <Popover.Trigger
+                              disabled={isLoading}
+                              className="shrink-0 mt-0.5 flex items-center gap-0.5 p-0.5 rounded hover:bg-secondary/50 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                              aria-label="Change status"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <StatusIcon
+                                className={`w-4 h-4 ${
+                                  group.key === 'done' ? 'text-citrus-lime' : ''
+                                }`}
+                              />
+                              <ChevronDown className="w-3 h-3 opacity-70" />
+                            </Popover.Trigger>
+                            <Popover.Portal>
+                              <Popover.Content
+                                side="right"
+                                align="start"
+                                sideOffset={6}
+                                className="min-w-[160px] p-1 bg-surface-1 border border-border rounded-lg shadow-lg z-50"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {transitions.length === 0 && isPopoverOpen ? (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                                    Loading...
+                                  </div>
+                                ) : transitions.length === 0 ? (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                                    No transitions available
+                                  </div>
+                                ) : (
+                                  transitions.map((t) => (
+                                    <button
+                                      key={t.id}
+                                      onClick={() => handleApplyTransition(task, t)}
+                                      disabled={isLoading}
+                                      className="w-full text-left px-3 py-2 text-xs rounded hover:bg-secondary/70 flex items-center gap-2"
+                                    >
+                                      {['done', 'completed'].includes(
+                                        t.to?.statusCategory?.key ?? ''
+                                      ) && (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-citrus-lime shrink-0" />
+                                      )}
+                                      {['indeterminate', 'in-flight'].includes(
+                                        t.to?.statusCategory?.key ?? ''
+                                      ) && (
+                                        <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                      )}
+                                      {t.to?.statusCategory?.key === 'new' && (
+                                        <Circle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                      )}
+                                      <span>{t.name}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </Popover.Content>
+                            </Popover.Portal>
+                          </Popover.Root>
                           <div
                             className="flex-1 min-w-0 cursor-pointer"
                             onClick={() => setEditTask(task)}

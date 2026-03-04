@@ -117,7 +117,29 @@ export async function updateJiraIssue(
   }
 }
 
-export async function getTransitions(config: JiraConfig, key: string): Promise<{ id: string; name: string; to: { name: string } }[]> {
+export interface JiraTransition {
+  id: string
+  name: string
+  to?: {
+    name?: string
+    statusCategory?: { key: string }
+  }
+}
+
+/** Maps Jira transition target to our TaskStatus using statusCategory (reliable) or name fallback */
+export function transitionToStatus(t: JiraTransition): 'todo' | 'in_progress' | 'done' | null {
+  const cat = t.to?.statusCategory?.key?.toLowerCase()
+  if (cat === 'done' || cat === 'completed') return 'done'
+  if (cat === 'indeterminate' || cat === 'in-flight') return 'in_progress'
+  if (cat === 'new') return 'todo'
+  const text = `${(t.to?.name ?? '')} ${(t.name ?? '')}`.toLowerCase()
+  if (/done|complete|resolved|closed|hecho|finaliz|terminad|implementad|cerrar|completar/.test(text)) return 'done'
+  if (/in progress|en progreso|in-flight|indeterminate/.test(text)) return 'in_progress'
+  if (/to do|open|reopen|reabrir|por hacer|pendiente|abierto/.test(text)) return 'todo'
+  return null
+}
+
+export async function getTransitions(config: JiraConfig, key: string): Promise<JiraTransition[]> {
   const res = await fetch(`${API_BASE}/jira/issues/${encodeURIComponent(key)}/transitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
