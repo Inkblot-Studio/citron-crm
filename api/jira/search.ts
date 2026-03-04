@@ -1,37 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-
-
-export interface JiraCredentials {
-  domain: string
-  email: string
-  apiToken: string
-}
-
-function base64Encode(str: string): string {
-  return Buffer.from(str, 'utf-8').toString('base64')
-}
-
-export function getAuthHeader(creds: JiraCredentials): string {
-  return `Basic ${base64Encode(`${creds.email}:${creds.apiToken}`)}`
-}
-
-export async function jiraFetch(
-  creds: JiraCredentials,
-  path: string,
-  options: RequestInit = {}
-): Promise<Response> {
-  const url = `${creds.domain.replace(/\/$/, '')}/rest/api/3${path}`
-  const auth = getAuthHeader(creds)
-  return fetch(url, {
-    ...options,
-    headers: {
-      Authorization: auth,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...options.headers,
-    },
-  })
-}
+import { jiraFetch } from './_utils'
 
 const DEFAULT_FIELDS = ['summary', 'status', 'assignee', 'priority', 'duedate', 'project', 'labels', 'issuetype', 'description', 'created', 'updated']
 
@@ -49,21 +17,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { domain, email, apiToken, jql, fields = DEFAULT_FIELDS, maxResults = 50, startAt = 0 } = req.body || {}
-  if (!domain || !email || !apiToken) {
+  const { domain, email, apiToken, jql, fields = DEFAULT_FIELDS, maxResults = 50, nextPageToken } = req.body || {}
+  if (!domain || !email || (process.env.NODE_ENV === 'production' && !apiToken)) {
     return res.status(400).json({ error: 'Missing domain, email, or apiToken' })
   }
 
   const defaultJql = 'assignee = currentUser() ORDER BY updated DESC'
-  const body = {
+  const body: Record<string, unknown> = {
     jql: jql || defaultJql,
     fields,
     maxResults: Math.min(maxResults, 100),
-    startAt,
   }
+  if (nextPageToken) body.nextPageToken = nextPageToken
 
   try {
-    const response = await jiraFetch({ domain, email, apiToken }, '/search', {
+    const response = await jiraFetch({ domain, email, apiToken }, '/search/jql', {
       method: 'POST',
       body: JSON.stringify(body),
     })
