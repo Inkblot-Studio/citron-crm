@@ -27,7 +27,7 @@ import {
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
-const EmailCampaignsPage = lazy(() => import('@/pages/EmailCampaignsPage'))
+const MarketingPage = lazy(() => import('marketing/Marketing'))
 const InvoicesPage = lazy(() => import('@/pages/InvoicesPage'))
 const TasksPage = lazy(() => import('@/pages/TasksPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
@@ -270,7 +270,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
             <PageWrapper showRightPanel={false}>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                  <EmailCampaignsPage />
+                  <MarketingPage />
                 </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>
