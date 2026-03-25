@@ -1,9 +1,23 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Citron OS — Intelligence Lab</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('citron-ui-theme')
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored)
+            return
+          }
+        } catch (_) {}
+        var prefersDark =
+          window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
