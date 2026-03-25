@@ -1,4 +1,5 @@
-import { Button } from '@citron-systems/citron-ui'
+import { Button, Skeleton, TaskKanbanBoard } from '@citron-systems/citron-ui'
+import type { TaskWithStatus as KanbanTask } from '@citron-systems/citron-ui'
 import * as Popover from '@radix-ui/react-popover'
 import {
   CheckSquare,
@@ -14,8 +15,10 @@ import {
   FolderKanban,
   Tag,
   ChevronDown,
+  List,
+  LayoutGrid,
 } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '@/lib/ToastContext'
 import { useJiraConfig } from '@/lib/JiraContext'
@@ -31,6 +34,8 @@ import type { Task, TaskPriority } from '@/lib/jira-types'
 import { TaskEditModal } from '@/components/TaskEditModal'
 import { TaskCreateModal } from '@/components/TaskCreateModal'
 
+type ViewMode = 'list' | 'kanban'
+
 const priorityConfig: Record<TaskPriority, { label: string; color: string; bg: string }> = {
   urgent: { label: 'Urgent', color: 'text-destructive', bg: 'bg-destructive/10' },
   high: { label: 'High', color: 'text-citrus-orange', bg: 'bg-citrus-orange/10' },
@@ -44,6 +49,68 @@ const statusGroups = [
   { key: 'done' as const, label: 'Done', icon: CheckCircle2 },
 ]
 
+function TasksListSkeleton() {
+  return (
+    <div className="space-y-6">
+      {statusGroups.map((g) => (
+        <div key={g.key}>
+          <div className="flex items-center gap-2 mb-3">
+            <Skeleton className="w-3.5 h-3.5 rounded-full" />
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-4 w-6 rounded-full" />
+          </div>
+          <div className="space-y-2">
+            {[1, 2].map((j) => (
+              <div key={j} className="glass rounded-xl p-4 flex items-start gap-4">
+                <Skeleton className="w-4 h-4 rounded-full shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-12 rounded-full shrink-0" />
+                <Skeleton className="h-3 w-16 shrink-0" />
+                <Skeleton className="h-3 w-20 shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function KanbanSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {statusGroups.map((g) => (
+        <div key={g.key} className="flex flex-col">
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <Skeleton className="w-3.5 h-3.5 rounded-full" />
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-4 w-6 rounded-full" />
+          </div>
+          <div className="space-y-2 flex-1">
+            {[1, 2, 3].map((j) => (
+              <div key={j} className="glass rounded-xl p-3 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-12 rounded-full" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function TasksPage() {
   const { config, isConnected } = useJiraConfig()
   const { addToast } = useToast()
@@ -55,6 +122,14 @@ export default function TasksPage() {
   const [statusPopoverTask, setStatusPopoverTask] = useState<string | null>(null)
   const [transitions, setTransitions] = useState<JiraTransition[]>([])
   const [loadingTransition, setLoadingTransition] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('citron-tasks-view') as ViewMode) || 'list'
+  })
+
+  const setAndPersistView = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('citron-tasks-view', mode)
+  }
 
   const loadTasks = useCallback(async () => {
     if (!config) return
@@ -122,6 +197,53 @@ export default function TasksPage() {
     await updateJiraIssue(cfg, key, payload as Parameters<typeof updateJiraIssue>[2])
   }
 
+  const kanbanTasks: KanbanTask[] = useMemo(
+    () =>
+      tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        company: t.project?.name ?? '',
+        priority: t.priority,
+        date: t.due ? new Date(t.due).toLocaleDateString() : '-',
+        assignee: t.assignee?.displayName ?? 'Unassigned',
+        completed: t.status === 'done',
+        jiraKey: t.id,
+        status: t.status,
+      })),
+    [tasks]
+  )
+
+  const handleKanbanChange = async (updated: KanbanTask[]) => {
+    if (!config) return
+    for (const kt of updated) {
+      const orig = tasks.find((t) => t.id === kt.id)
+      if (!orig || orig.status === kt.status) continue
+      try {
+        const available = await getTransitions(config, kt.id)
+        const target = available.find((tr) => {
+          const mapped = transitionToStatus(tr)
+          return mapped === kt.status
+        })
+        if (target) {
+          await transitionJiraIssue(config, kt.id, target.id)
+          addToast({ title: `${kt.id} moved to ${kt.status === 'done' ? 'Done' : kt.status === 'in_progress' ? 'In Progress' : 'To Do'}`, variant: 'success' })
+        } else {
+          addToast({ title: `No transition available for ${kt.id}`, variant: 'warning' })
+          return
+        }
+      } catch (e) {
+        addToast({ title: e instanceof Error ? e.message : 'Transition failed', variant: 'error' })
+        return
+      }
+    }
+    setTasks((prev) =>
+      prev.map((t) => {
+        const kt = updated.find((u) => u.id === t.id)
+        return kt ? { ...t, status: kt.status } : t
+      })
+    )
+  }
+
   if (!isConnected || !config) {
     return (
       <div className="h-full flex flex-col items-center justify-center px-8">
@@ -159,6 +281,22 @@ export default function TasksPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={() => setAndPersistView('list')}
+              className={`p-1.5 transition-colors ${viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
+              aria-label="List view"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setAndPersistView('kanban')}
+              className={`p-1.5 transition-colors ${viewMode === 'kanban' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}
+              aria-label="Kanban view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
           <Button
             variant="secondary"
             onClick={loadTasks}
@@ -177,21 +315,7 @@ export default function TasksPage() {
 
       <div className="flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
         {loading && tasks.length === 0 ? (
-          <div className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-4 w-24 bg-secondary rounded animate-pulse" />
-                <div className="space-y-2">
-                  {[1, 2, 3].map((j) => (
-                    <div
-                      key={j}
-                      className="h-16 glass rounded-xl animate-pulse"
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          viewMode === 'kanban' ? <KanbanSkeleton /> : <TasksListSkeleton />
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
@@ -199,6 +323,11 @@ export default function TasksPage() {
               Retry
             </Button>
           </div>
+        ) : viewMode === 'kanban' ? (
+          <TaskKanbanBoard
+            tasks={kanbanTasks}
+            onTasksChange={handleKanbanChange}
+          />
         ) : (
           <div className="space-y-6">
             {statusGroups.map((group) => {

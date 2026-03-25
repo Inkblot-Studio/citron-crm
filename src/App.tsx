@@ -7,6 +7,7 @@ import {
   OnboardingWizard,
   GuidedTour,
   Toaster,
+  ThemeProvider,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
@@ -222,6 +223,7 @@ function PageWrapper({ showRightPanel = true, children }: { showRightPanel?: boo
         activePath: location.pathname,
         onNavigate: navigate,
         showStatusDot: true,
+        showThemeToggle: true,
       }}
       rightPanelProps={{
         agents: AGENTS,
@@ -361,6 +363,7 @@ export default function App() {
   }
 
   return (
+    <ThemeProvider>
     <ToastProvider>
       <JiraProvider>
         {!onboardingDone && (
@@ -372,6 +375,7 @@ export default function App() {
         </BrowserRouter>
       </JiraProvider>
     </ToastProvider>
+    </ThemeProvider>
   )
 }
 
