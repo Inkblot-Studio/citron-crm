@@ -46,13 +46,13 @@ npm run dev
 
 Starts the Vite dev server at `http://localhost:5173`.
 
-For full-stack development (including Jira API), use Vercel's dev server:
+For Vercel-local development (e.g. when you add `/api/*` serverless routes), use:
 
 ```bash
 npm run dev:full
 ```
 
-This runs both the frontend and the `/api/*` serverless functions locally.
+This runs the Vercel dev server with the frontend. Product modules (Marketing, Accounting, Tasks Manager) load from **Module Federation** remotes configured in `vite.config.ts`.
 
 ### Build
 
@@ -186,23 +186,12 @@ interface CitronEvent {
 }
 ```
 
-## Jira Integration
-
-Connect Jira Cloud to sync and manage tasks:
-
-1. Go to **Settings** > **Integrations**
-2. Enter your Jira URL, email, and [API token](https://id.atlassian.com/manage-profile/security/api-tokens)
-3. Click **Connect**
-4. Navigate to **Tasks** to view and manage your Jira issues
-
-The Tasks page supports creating issues, editing (title, description, priority, due date), and changing status via workflow transitions.
-
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Start development server |
-| `npm run dev:full` | Start with Jira API (Vercel dev) |
+| `npm run dev:full` | Vercel dev (frontend + any `/api` routes) |
 | `npm run build` | TypeScript check + production build |
 | `npm run preview` | Serve production build |
 

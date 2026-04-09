@@ -10,7 +10,6 @@ import {
   ThemeProvider,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
-import { JiraProvider } from '@/lib/JiraContext'
 import type { AppSidebarItem, GuidedTourStep } from '@citron-systems/citron-ui'
 import {
   MessageSquare,
@@ -28,16 +27,16 @@ import {
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const MarketingPage = lazy(() => import('marketing/Marketing'))
-const InvoicesPage = lazy(() => import('@/pages/InvoicesPage'))
-const TasksPage = lazy(() => import('@/pages/TasksPage'))
+const AccountingModule = lazy(() => import('accounting/Accounting'))
+const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 const SIDEBAR_ITEMS: AppSidebarItem[] = [
   { id: 'canvas', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
-  { id: 'invoices', icon: FileText, label: 'Invoices & Deals', path: '/invoices', dataTour: 'nav-invoices' },
+  { id: 'accounting', icon: FileText, label: 'Accounting', path: '/invoices', dataTour: 'nav-invoices' },
   { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
-  { id: 'tasks', icon: CheckSquare, label: 'Tasks', path: '/tasks', dataTour: 'nav-tasks' },
+  { id: 'tasks', icon: CheckSquare, label: 'Tasks Manager', path: '/tasks', dataTour: 'nav-tasks' },
 ]
 
 const SIDEBAR_BOTTOM_ITEMS: AppSidebarItem[] = [
@@ -168,8 +167,8 @@ const TOUR_STEPS: GuidedTourStep[] = [
   },
   {
     target: '[data-tour="nav-invoices"]',
-    title: 'Invoices & Deals',
-    description: 'Manage your sales pipeline and generate AI-powered invoices.',
+    title: 'Accounting',
+    description: 'Invoices, deals pipeline, and billing workflows in the Accounting module.',
     position: 'right',
   },
   {
@@ -180,24 +179,24 @@ const TOUR_STEPS: GuidedTourStep[] = [
   },
   {
     target: '[data-tour="nav-tasks"]',
-    title: 'Tasks',
-    description: 'Track and manage tasks across your deals and team.',
+    title: 'Tasks Manager',
+    description: 'Track and manage work in the Tasks Manager module.',
     position: 'right',
   },
 ]
 
 const AGENTS = [
   { id: 'general', label: 'General', icon: MessageSquare, description: 'Full CRM assistant' },
-  { id: 'invoices', label: 'Invoices', icon: FileText, description: 'Create & manage invoices' },
+  { id: 'accounting', label: 'Accounting', icon: FileText, description: 'Invoices & deals' },
   { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare, description: 'Task automation' },
+  { id: 'tasks', label: 'Tasks Manager', icon: CheckSquare, description: 'Tasks & workflows' },
 ]
 
 const AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intelligence')[] }> = {
   general: { text: "Here's an overview of your CRM data with entity profile and intelligence scores.", cards: ['entity', 'intelligence'] },
-  invoices: { text: "I've pulled up your latest invoice data and deal health metrics.", cards: ['entity', 'intelligence'] },
+  accounting: { text: "I've pulled up your Accounting data: invoices and deal health metrics.", cards: ['entity', 'intelligence'] },
   campaigns: { text: 'Analyzing your campaign performance. Here are the key insights.', cards: ['intelligence'] },
-  tasks: { text: "I've reviewed your task queue. Here's what needs attention.", cards: ['intelligence'] },
+  tasks: { text: "I've reviewed your Tasks Manager queue. Here's what needs attention.", cards: ['intelligence'] },
 }
 
 function PageWrapper({ showRightPanel = true, children }: { showRightPanel?: boolean; children: React.ReactNode }) {
@@ -262,7 +261,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
             <PageWrapper showRightPanel={false}>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                  <InvoicesPage />
+                  <AccountingModule />
                 </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>
@@ -274,7 +273,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
             <PageWrapper showRightPanel={false}>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                  <TasksPage />
+                  <TasksManagerPage />
                 </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>
@@ -343,15 +342,13 @@ export default function App() {
   return (
     <ThemeProvider>
     <ToastProvider>
-      <JiraProvider>
-        {!onboardingDone && (
-          <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
-        )}
-        <BrowserRouter>
-          <AppWithToaster />
-          <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
-        </BrowserRouter>
-      </JiraProvider>
+      {!onboardingDone && (
+        <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
+      )}
+      <BrowserRouter>
+        <AppWithToaster />
+        <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
+      </BrowserRouter>
     </ToastProvider>
     </ThemeProvider>
   )
