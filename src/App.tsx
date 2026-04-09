@@ -10,6 +10,7 @@ import {
   ThemeProvider,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
+import { JiraProvider } from '@/lib/JiraContext'
 import type { AppSidebarItem, GuidedTourStep } from '@citron-systems/citron-ui'
 import {
   MessageSquare,
@@ -343,13 +344,15 @@ export default function App() {
     <ThemeProvider>
       <div className="flex h-full min-h-0 flex-col">
         <ToastProvider>
-          {!onboardingDone && (
-            <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
-          )}
-          <BrowserRouter>
-            <AppWithToaster />
-            <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
-          </BrowserRouter>
+          <JiraProvider>
+            {!onboardingDone && (
+              <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
+            )}
+            <BrowserRouter>
+              <AppWithToaster />
+              <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
+            </BrowserRouter>
+          </JiraProvider>
         </ToastProvider>
       </div>
     </ThemeProvider>

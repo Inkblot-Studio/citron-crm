@@ -1,15 +1,138 @@
-import { Settings, User, Bell, Shield, Palette, Key, Database } from 'lucide-react'
+import { Settings, User, Bell, Shield, Palette, Key, Database, Globe, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/lib/ToastContext'
+import { useJiraConfig } from '@/lib/JiraContext'
+import { verifyJiraConnection } from '@/lib/jira-api'
 
 const sections = [
   { key: 'profile', label: 'Profile', icon: User },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'security', label: 'Security', icon: Shield },
   { key: 'appearance', label: 'Appearance', icon: Palette },
+  { key: 'integrations', label: 'Integrations', icon: Globe },
   { key: 'api', label: 'API Keys', icon: Key },
   { key: 'data', label: 'Data & Export', icon: Database },
 ]
+
+function IntegrationsSection() {
+  const { config, isConnected, saveConfig, clearConfig } = useJiraConfig()
+  const { addToast } = useToast()
+  const [domain, setDomain] = useState(config?.domain ?? '')
+  const [email, setEmail] = useState(config?.email ?? '')
+  const [apiToken, setApiToken] = useState(config?.apiToken ?? '')
+  const [testing, setTesting] = useState(false)
+
+  const handleConnect = async () => {
+    const d = domain.trim().replace(/\/$/, '')
+    if (!d || !email.trim() || !apiToken.trim()) {
+      addToast({ title: 'Fill in all fields', variant: 'error' })
+      return
+    }
+    setTesting(true)
+    const result = await verifyJiraConnection({ domain: d, email: email.trim(), apiToken: apiToken.trim() })
+    setTesting(false)
+    if (result.ok) {
+      saveConfig({ domain: d, email: email.trim(), apiToken: apiToken.trim() })
+      addToast({ title: 'Jira connected — Tasks Manager will use these credentials', variant: 'success' })
+    } else {
+      addToast({ title: result.error ?? 'Connection failed', variant: 'error' })
+    }
+  }
+
+  const handleDisconnect = () => {
+    clearConfig()
+    setDomain('')
+    setEmail('')
+    setApiToken('')
+    addToast({ title: 'Jira disconnected', variant: 'info' })
+  }
+
+  return (
+    <div className="max-w-lg space-y-5">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">Integrations</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Connect Jira Cloud here. Values are saved under <code className="text-[10px] bg-secondary px-1 rounded">citron-jira-config</code> so the
+          federated <strong>Tasks Manager</strong> module (same origin) can read them.
+        </p>
+        <p className="text-[10px] text-muted-foreground/80 mt-2">
+          Connect calls <code className="text-[10px]">POST /api/jira/myself</code> to verify credentials. In dev, Vite handles this; on Vercel, the serverless route does.
+        </p>
+      </div>
+      <div className="glass rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#2684FF]/10 flex items-center justify-center">
+            <span className="text-lg font-bold text-[#2684FF]">J</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Jira</p>
+            <p className="text-[10px] text-muted-foreground">Used by Tasks Manager for issues &amp; sync</p>
+          </div>
+        </div>
+        {isConnected ? (
+          <div className="space-y-3 pt-2 border-t border-border">
+            <p className="text-xs text-muted-foreground">Connected to {config?.domain}</p>
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">Jira URL</label>
+              <input
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder="https://your-domain.atlassian.net"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">API Token</label>
+              <input
+                type="password"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                placeholder="Your Jira API token"
+                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <a
+                href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-primary hover:underline flex items-center gap-1"
+              >
+                Create API token <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={testing}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {testing ? 'Connecting...' : 'Connect'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState('profile')
@@ -41,6 +164,7 @@ export default function SettingsPage() {
           {sections.map((s) => (
             <button
               key={s.key}
+              type="button"
               onClick={() => setActiveSection(s.key)}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 activeSection === s.key
@@ -85,6 +209,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleSaveProfile}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
@@ -128,19 +253,23 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeSection !== 'profile' && activeSection !== 'appearance' && (
-            <div className="flex items-center justify-center h-60">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-surface-2 flex items-center justify-center mx-auto mb-3">
-                  <Settings className="w-5 h-5 text-muted-foreground/40" />
+          {activeSection === 'integrations' && <IntegrationsSection />}
+
+          {activeSection !== 'profile' &&
+            activeSection !== 'appearance' &&
+            activeSection !== 'integrations' && (
+              <div className="flex items-center justify-center h-60">
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-xl bg-surface-2 flex items-center justify-center mx-auto mb-3">
+                    <Settings className="w-5 h-5 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {sections.find((s) => s.key === activeSection)?.label} settings
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Configuration panel coming soon</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {sections.find((s) => s.key === activeSection)?.label} settings
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Configuration panel coming soon</p>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </div>
     </div>
