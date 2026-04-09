@@ -24,12 +24,12 @@ import {
   Globe,
   Megaphone,
 } from 'lucide-react'
+import SettingsPage from '@/pages/SettingsPage'
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const MarketingPage = lazy(() => import('marketing/Marketing'))
 const AccountingModule = lazy(() => import('accounting/Accounting'))
 const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 const SIDEBAR_ITEMS: AppSidebarItem[] = [
@@ -221,7 +221,9 @@ function PageWrapper({ showRightPanel = true, children }: { showRightPanel?: boo
         autoRespondDelayMs: 800,
       }}
     >
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full" data-tour="module-content">
+        {children}
+      </div>
     </AppLayout>
   )
 }
@@ -284,9 +286,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
           element={
             <PageWrapper showRightPanel={false}>
               <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                  <SettingsPage />
-                </Suspense>
+                <SettingsPage />
               </RouteWithErrorBoundary>
             </PageWrapper>
           }
@@ -341,15 +341,17 @@ export default function App() {
 
   return (
     <ThemeProvider>
-    <ToastProvider>
-      {!onboardingDone && (
-        <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
-      )}
-      <BrowserRouter>
-        <AppWithToaster />
-        <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
-      </BrowserRouter>
-    </ToastProvider>
+      <div className="flex h-full min-h-0 flex-col">
+        <ToastProvider>
+          {!onboardingDone && (
+            <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
+          )}
+          <BrowserRouter>
+            <AppWithToaster />
+            <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
+          </BrowserRouter>
+        </ToastProvider>
+      </div>
     </ThemeProvider>
   )
 }

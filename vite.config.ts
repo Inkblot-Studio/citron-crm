@@ -32,6 +32,14 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
+      dedupe: ['react', 'react-dom', 'react-router-dom'],
+    },
+    // Do not pre-bundle Module Federation remotes (breaks dev / runtime resolution)
+    optimizeDeps: {
+      exclude: ['marketing/Marketing', 'tasksManager/TasksManager', 'accounting/Accounting'],
+    },
+    server: {
+      cors: true,
     },
     build: {
       modulePreload: false,

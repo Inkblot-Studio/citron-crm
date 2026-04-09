@@ -25,7 +25,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden w-full">
       <header className="px-8 py-5 border-b border-border flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
           <Settings className="w-4 h-4 text-muted-foreground" />
@@ -36,8 +36,8 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-52 border-r border-border py-4 px-3 space-y-0.5">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="w-52 shrink-0 border-r border-border py-4 px-3 space-y-0.5">
           {sections.map((s) => (
             <button
               key={s.key}
@@ -54,7 +54,7 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
           {activeSection === 'profile' && (
             <div className="max-w-lg space-y-5">
               <h2 className="text-sm font-semibold text-foreground">Profile Settings</h2>
