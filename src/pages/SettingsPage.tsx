@@ -1,8 +1,31 @@
-import { Settings, User, Bell, Shield, Palette, Key, Database, Globe, ExternalLink } from 'lucide-react'
+import {
+  Settings,
+  User,
+  Bell,
+  Shield,
+  Palette,
+  Key,
+  Database,
+  Globe,
+  ExternalLink,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '@/lib/ToastContext'
 import { useJiraConfig } from '@/lib/JiraContext'
 import { verifyJiraConnection } from '@/lib/jira-api'
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Input,
+  Label,
+  Separator,
+  IntegrationPlaceholder,
+  PageHeader,
+} from '@citron-systems/citron-ui'
 
 const sections = [
   { key: 'profile', label: 'Profile', icon: User },
@@ -33,7 +56,7 @@ function IntegrationsSection() {
     setTesting(false)
     if (result.ok) {
       saveConfig({ domain: d, email: email.trim(), apiToken: apiToken.trim() })
-      addToast({ title: 'Jira connected — Tasks Manager will use these credentials', variant: 'success' })
+      addToast({ title: 'Jira connected', variant: 'success' })
     } else {
       addToast({ title: result.error ?? 'Connection failed', variant: 'error' })
     }
@@ -48,94 +71,87 @@ function IntegrationsSection() {
   }
 
   return (
-    <div className="max-w-lg space-y-5">
+    <div className="max-w-lg space-y-6">
       <div>
         <h2 className="text-sm font-semibold text-foreground">Integrations</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Connect Jira Cloud here. Values are saved under <code className="text-[10px] bg-secondary px-1 rounded">citron-jira-config</code> so the
-          federated <strong>Tasks Manager</strong> module (same origin) can read them.
-        </p>
-        <p className="text-[10px] text-muted-foreground/80 mt-2">
-          Connect calls <code className="text-[10px]">POST /api/jira/myself</code> to verify credentials. In dev, Vite handles this; on Vercel, the serverless route does.
+          External services used by CRM modules.
         </p>
       </div>
-      <div className="glass rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#2684FF]/10 flex items-center justify-center">
-            <span className="text-lg font-bold text-[#2684FF]">J</span>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">Jira</p>
-            <p className="text-[10px] text-muted-foreground">Used by Tasks Manager for issues &amp; sync</p>
-          </div>
-        </div>
-        {isConnected ? (
-          <div className="space-y-3 pt-2 border-t border-border">
-            <p className="text-xs text-muted-foreground">Connected to {config?.domain}</p>
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            >
-              Disconnect
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3 pt-2 border-t border-border">
+
+      <IntegrationPlaceholder
+        name="Jira"
+        description="Issue tracking and project management for Tasks Manager"
+        icon={<span className="text-lg font-bold text-status-info">J</span>}
+        connected={isConnected}
+        onConnect={handleConnect}
+        onDisconnect={handleDisconnect}
+      />
+
+      {!isConnected && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs">Jira Credentials</CardTitle>
+            <CardDescription className="text-[10px]">
+              Values are shared with the Tasks Manager module via localStorage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-[10px] text-muted-foreground">Jira URL</label>
-              <input
+              <Label className="text-[10px]">Jira URL</Label>
+              <Input
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="https://your-domain.atlassian.net"
-                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] text-muted-foreground">Email</label>
-              <input
+              <Label className="text-[10px]">Email</Label>
+              <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
-                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] text-muted-foreground">API Token</label>
-              <input
+              <Label className="text-[10px]">API Token</Label>
+              <Input
                 type="password"
                 value={apiToken}
                 onChange={(e) => setApiToken(e.target.value)}
                 placeholder="Your Jira API token"
-                className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <a
                 href="https://id.atlassian.com/manage-profile/security/api-tokens"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                className="text-[10px] text-primary hover:underline inline-flex items-center gap-1"
               >
                 Create API token <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={testing}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
+            <Button onClick={handleConnect} disabled={testing} className="w-full">
               {testing ? 'Connecting...' : 'Connect'}
-            </button>
-          </div>
-        )}
-      </div>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {isConnected && (
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-xs text-muted-foreground">
+              Connected to <strong>{config?.domain}</strong>
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
 
-export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState('profile')
+function ProfileSection() {
   const [profile, setProfile] = useState({
     displayName: 'Alex Operator',
     email: 'alex@citronos.io',
@@ -143,24 +159,88 @@ export default function SettingsPage() {
   })
   const { addToast } = useToast()
 
-  const handleSaveProfile = () => {
-    addToast({ title: 'Settings saved', variant: 'success' })
-  }
+  return (
+    <div className="max-w-lg space-y-5">
+      <h2 className="text-sm font-semibold text-foreground">Profile Settings</h2>
+      <Card>
+        <CardContent className="space-y-4 py-5">
+          <div className="space-y-1.5">
+            <Label>Display Name</Label>
+            <Input
+              value={profile.displayName}
+              onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Email</Label>
+            <Input
+              value={profile.email}
+              onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Role</Label>
+            <Input
+              value={profile.role}
+              onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))}
+            />
+          </div>
+          <Separator />
+          <Button onClick={() => addToast({ title: 'Settings saved', variant: 'success' })}>
+            Save Changes
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function AppearanceSection() {
+  return (
+    <div className="max-w-lg space-y-5">
+      <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
+      <p className="text-xs text-muted-foreground">
+        Citron OS supports full white-label theming via design tokens.
+      </p>
+      <Card>
+        <CardContent className="py-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Theme</p>
+            <p className="text-[10px] text-muted-foreground">Toggle between light and dark modes using the sidebar control.</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function PlaceholderSection({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center h-60">
+      <div className="text-center space-y-2">
+        <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto">
+          <Settings className="w-5 h-5 text-muted-foreground/40" />
+        </div>
+        <p className="text-sm text-muted-foreground">{label} settings</p>
+        <p className="text-xs text-muted-foreground/60">Configuration panel coming soon</p>
+      </div>
+    </div>
+  )
+}
+
+export default function SettingsPage() {
+  const [activeSection, setActiveSection] = useState('profile')
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden w-full">
-      <header className="px-8 py-5 border-b border-border flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-          <Settings className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">Settings</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Workspace configuration</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Settings"
+        subtitle="Workspace configuration"
+        icon={<Settings className="w-4 h-4" />}
+      />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="w-52 shrink-0 border-r border-border py-4 px-3 space-y-0.5">
+        <nav className="w-52 shrink-0 border-r border-border py-4 px-3 space-y-0.5">
           {sections.map((s) => (
             <button
               key={s.key}
@@ -176,99 +256,16 @@ export default function SettingsPage() {
               {s.label}
             </button>
           ))}
-        </div>
+        </nav>
 
         <div className="min-h-0 flex-1 overflow-y-auto hide-scrollbar px-8 py-6">
-          {activeSection === 'profile' && (
-            <div className="max-w-lg space-y-5">
-              <h2 className="text-sm font-semibold text-foreground">Profile Settings</h2>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Display Name</label>
-                  <input
-                    value={profile.displayName}
-                    onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))}
-                    className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Email</label>
-                  <input
-                    value={profile.email}
-                    onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
-                    className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">Role</label>
-                  <input
-                    value={profile.role}
-                    onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))}
-                    className="w-full bg-surface-1 border border-border rounded-lg px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-              >
-                Save Changes
-              </button>
-            </div>
-          )}
-
-          {activeSection === 'appearance' && (
-            <div className="max-w-lg space-y-5">
-              <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
-              <p className="text-xs text-muted-foreground">Citron OS supports full white-label theming via design tokens.</p>
-              <div className="space-y-4">
-                <div className="glass rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Theme</p>
-                    <p className="text-[10px] text-muted-foreground">Light mode is currently active</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-surface-0 border-2 border-primary ring-2 ring-primary/20" title="Light" />
-                    <div className="w-8 h-8 rounded-lg bg-gray-800 border border-border/50 opacity-40" title="Dark" />
-                  </div>
-                </div>
-                <div className="glass rounded-xl p-4">
-                  <p className="text-sm font-medium text-foreground mb-3">Accent Colors</p>
-                  <div className="flex gap-2">
-                    {[
-                      { color: 'bg-citrus-lime', active: true },
-                      { color: 'bg-citrus-lemon', active: false },
-                      { color: 'bg-citrus-orange', active: false },
-                      { color: 'bg-citrus-green', active: false },
-                    ].map((c, i) => (
-                      <div
-                        key={i}
-                        className={`w-8 h-8 rounded-full ${c.color} ${c.active ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
+          {activeSection === 'profile' && <ProfileSection />}
+          {activeSection === 'appearance' && <AppearanceSection />}
           {activeSection === 'integrations' && <IntegrationsSection />}
-
           {activeSection !== 'profile' &&
             activeSection !== 'appearance' &&
             activeSection !== 'integrations' && (
-              <div className="flex items-center justify-center h-60">
-                <div className="text-center">
-                  <div className="w-12 h-12 rounded-xl bg-surface-2 flex items-center justify-center mx-auto mb-3">
-                    <Settings className="w-5 h-5 text-muted-foreground/40" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {sections.find((s) => s.key === activeSection)?.label} settings
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Configuration panel coming soon</p>
-                </div>
-              </div>
+              <PlaceholderSection label={sections.find((s) => s.key === activeSection)?.label ?? activeSection} />
             )}
         </div>
       </div>

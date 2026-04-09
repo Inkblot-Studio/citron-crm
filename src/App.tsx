@@ -1,9 +1,8 @@
-import { Suspense, lazy, useState, useEffect } from 'react'
+import { Suspense, lazy, useState, useEffect, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppLayout,
   RouteWithErrorBoundary,
-  ModuleSkeleton,
   OnboardingWizard,
   GuidedTour,
   Toaster,
@@ -12,10 +11,10 @@ import {
 import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
 import type { AppSidebarItem, GuidedTourStep } from '@citron-systems/citron-ui'
+import { RouteFallback } from '@/components/RouteFallback'
 import {
   MessageSquare,
   FileText,
-  Users,
   Mail,
   CheckSquare,
   Settings,
@@ -24,6 +23,7 @@ import {
   Target,
   Globe,
   Megaphone,
+  Users,
 } from 'lucide-react'
 import SettingsPage from '@/pages/SettingsPage'
 
@@ -34,7 +34,7 @@ const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 const SIDEBAR_ITEMS: AppSidebarItem[] = [
-  { id: 'canvas', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
+  { id: 'home', icon: MessageSquare, label: 'Home', path: '/', dataTour: 'nav-home' },
   { id: 'accounting', icon: FileText, label: 'Accounting', path: '/invoices', dataTour: 'nav-invoices' },
   { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
   { id: 'tasks', icon: CheckSquare, label: 'Tasks Manager', path: '/tasks', dataTour: 'nav-tasks' },
@@ -150,32 +150,26 @@ const ONBOARDING_STEPS = [
 const TOUR_STEPS: GuidedTourStep[] = [
   {
     target: '[data-tour="sidebar"]',
-    title: 'Navigation Sidebar',
-    description: 'Access all CRM modules from this sidebar. Each icon represents a different module.',
+    title: 'Navigation',
+    description: 'Access all CRM modules from this sidebar.',
     position: 'right',
   },
   {
-    target: '[data-tour="canvas"]',
-    title: 'AI Command Canvas',
-    description: 'Your AI-powered command center. Chat with the system to manage deals, create emails, and generate reports.',
+    target: '[data-tour="nav-home"]',
+    title: 'AI Assistant',
+    description: 'Your AI-powered assistant. Ask questions, manage data, and generate content.',
     position: 'right',
-  },
-  {
-    target: '[data-tour="right-panel"]',
-    title: 'AI Chat & Events',
-    description: 'Chat with specialized AI agents and track real-time events from this panel.',
-    position: 'left',
   },
   {
     target: '[data-tour="nav-invoices"]',
     title: 'Accounting',
-    description: 'Invoices, deals pipeline, and billing workflows in the Accounting module.',
+    description: 'Invoices, deals pipeline, and billing workflows.',
     position: 'right',
   },
   {
     target: '[data-tour="nav-campaigns"]',
     title: 'Email Campaigns',
-    description: 'Create and send email campaigns with AI-powered templates and a drag-and-drop editor.',
+    description: 'Create and send email campaigns with AI-powered templates.',
     position: 'right',
   },
   {
@@ -186,43 +180,54 @@ const TOUR_STEPS: GuidedTourStep[] = [
   },
 ]
 
-const AGENTS = [
-  { id: 'general', label: 'General', icon: MessageSquare, description: 'Full CRM assistant' },
-  { id: 'accounting', label: 'Accounting', icon: FileText, description: 'Invoices & deals' },
-  { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
-  { id: 'tasks', label: 'Tasks Manager', icon: CheckSquare, description: 'Tasks & workflows' },
-]
-
-const AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intelligence')[] }> = {
-  general: { text: "Here's an overview of your CRM data with entity profile and intelligence scores.", cards: ['entity', 'intelligence'] },
-  accounting: { text: "I've pulled up your Accounting data: invoices and deal health metrics.", cards: ['entity', 'intelligence'] },
-  campaigns: { text: 'Analyzing your campaign performance. Here are the key insights.', cards: ['intelligence'] },
-  tasks: { text: "I've reviewed your Tasks Manager queue. Here's what needs attention.", cards: ['intelligence'] },
+const MODULE_AGENTS: Record<string, { id: string; label: string; icon: typeof MessageSquare; description: string }[]> = {
+  '/invoices': [
+    { id: 'accounting', label: 'Accounting', icon: FileText, description: 'Invoices & deals' },
+  ],
+  '/campaigns': [
+    { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
+  ],
+  '/tasks': [
+    { id: 'tasks', label: 'Tasks Manager', icon: CheckSquare, description: 'Tasks & workflows' },
+  ],
 }
 
-function PageWrapper({ showRightPanel = true, children }: { showRightPanel?: boolean; children: React.ReactNode }) {
+const MODULE_AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intelligence')[] }> = {
+  accounting: { text: "Here's your Accounting data: invoices and deal metrics.", cards: ['entity', 'intelligence'] },
+  campaigns: { text: 'Analyzing your campaign performance and key insights.', cards: ['intelligence'] },
+  tasks: { text: "Here's your Tasks Manager queue and what needs attention.", cards: ['intelligence'] },
+}
+
+function PageWrapper({ showRightPanel = false, children }: { showRightPanel?: boolean; children: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
 
+  const agents = useMemo(() => MODULE_AGENTS[location.pathname] ?? [], [location.pathname])
+  const hasAgents = agents.length > 0
+
   return (
     <AppLayout
-      showRightPanel={showRightPanel}
+      showRightPanel={showRightPanel && hasAgents}
       sidebarProps={{
         items: SIDEBAR_ITEMS,
         bottomItems: SIDEBAR_BOTTOM_ITEMS,
         activePath: location.pathname,
         onNavigate: navigate,
-        showStatusDot: true,
+        showStatusDot: false,
         showThemeToggle: true,
       }}
-      rightPanelProps={{
-        agents: AGENTS,
-        agentResponses: AGENT_RESPONSES,
-        autoRespond: true,
-        autoRespondDelayMs: 800,
-      }}
+      {...(showRightPanel && hasAgents
+        ? {
+            rightPanelProps: {
+              agents,
+              agentResponses: MODULE_AGENT_RESPONSES,
+              autoRespond: true,
+              autoRespondDelayMs: 800,
+            },
+          }
+        : {})}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full" data-tour="module-content">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full">
         {children}
       </div>
     </AppLayout>
@@ -237,9 +242,9 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/"
           element={
-            <PageWrapper showRightPanel={true}>
+            <PageWrapper showRightPanel={false}>
               <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                <Suspense fallback={<RouteFallback variant="home" />}>
                   <HomePage />
                 </Suspense>
               </RouteWithErrorBoundary>
@@ -249,9 +254,9 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/campaigns"
           element={
-            <PageWrapper showRightPanel={false}>
+            <PageWrapper showRightPanel={true}>
               <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                <Suspense fallback={<RouteFallback variant="module" />}>
                   <MarketingPage />
                 </Suspense>
               </RouteWithErrorBoundary>
@@ -261,9 +266,9 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/invoices"
           element={
-            <PageWrapper showRightPanel={false}>
+            <PageWrapper showRightPanel={true}>
               <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                <Suspense fallback={<RouteFallback variant="module" />}>
                   <AccountingModule />
                 </Suspense>
               </RouteWithErrorBoundary>
@@ -273,9 +278,9 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/tasks"
           element={
-            <PageWrapper showRightPanel={false}>
+            <PageWrapper showRightPanel={true}>
               <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+                <Suspense fallback={<RouteFallback variant="module" />}>
                   <TasksManagerPage />
                 </Suspense>
               </RouteWithErrorBoundary>
@@ -296,7 +301,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
           path="*"
           element={
             <RouteWithErrorBoundary>
-              <Suspense fallback={<ModuleSkeleton className="h-64" />}>
+              <Suspense fallback={<RouteFallback variant="module" />}>
                 <NotFound />
               </Suspense>
             </RouteWithErrorBoundary>
