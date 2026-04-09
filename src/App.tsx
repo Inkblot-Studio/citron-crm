@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect, useMemo } from 'react'
+import { Suspense, lazy, useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppLayout,
@@ -7,10 +7,11 @@ import {
   GuidedTour,
   Toaster,
   ThemeProvider,
+  AssistantPanel,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
-import type { AppSidebarItem, GuidedTourStep } from '@citron-systems/citron-ui'
+import type { AppSidebarItem, GuidedTourStep, AssistantMessage } from '@citron-systems/citron-ui'
 import { RouteFallback } from '@/components/RouteFallback'
 import {
   MessageSquare,
@@ -24,6 +25,7 @@ import {
   Globe,
   Megaphone,
   Users,
+  BotMessageSquare,
 } from 'lucide-react'
 import SettingsPage from '@/pages/SettingsPage'
 
@@ -114,7 +116,7 @@ const ONBOARDING_STEPS = [
     options: [
       { value: 'pipeline', label: 'Manage sales pipeline' },
       { value: 'automate', label: 'Automate outreach' },
-      { value: 'intelligence', label: 'AI-powered insights' },
+      { value: 'insights', label: 'AI-powered insights' },
       { value: 'invoicing', label: 'Invoicing & billing' },
       { value: 'reporting', label: 'Reporting & analytics' },
       { value: 'audience', label: 'Audience & lead management' },
@@ -180,34 +182,75 @@ const TOUR_STEPS: GuidedTourStep[] = [
   },
 ]
 
-const MODULE_AGENTS: Record<string, { id: string; label: string; icon: typeof MessageSquare; description: string }[]> = {
-  '/invoices': [
-    { id: 'accounting', label: 'Accounting', icon: FileText, description: 'Invoices & deals' },
-  ],
-  '/campaigns': [
-    { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
-  ],
-  '/tasks': [
-    { id: 'tasks', label: 'Tasks Manager', icon: CheckSquare, description: 'Tasks & workflows' },
-  ],
+const MODULE_LABELS: Record<string, string> = {
+  '/invoices': 'Accounting',
+  '/campaigns': 'Campaigns',
+  '/tasks': 'Tasks Manager',
 }
 
-const MODULE_AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intelligence')[] }> = {
-  accounting: { text: "Here's your Accounting data: invoices and deal metrics.", cards: ['entity', 'intelligence'] },
-  campaigns: { text: 'Analyzing your campaign performance and key insights.', cards: ['intelligence'] },
-  tasks: { text: "Here's your Tasks Manager queue and what needs attention.", cards: ['intelligence'] },
+// ── Assistant context (global toggle + messages) ────────────────────────────
+
+interface AssistantCtx {
+  open: boolean
+  setOpen: (open: boolean) => void
+  toggle: () => void
+  messages: AssistantMessage[]
+  send: (payload: { text: string; files: File[] }) => void
+  isProcessing: boolean
 }
 
-function PageWrapper({ showRightPanel = false, children }: { showRightPanel?: boolean; children: React.ReactNode }) {
+const AssistantContext = createContext<AssistantCtx | null>(null)
+
+function useAssistant() {
+  const ctx = useContext(AssistantContext)
+  if (!ctx) throw new Error('useAssistant must be used within AssistantProvider')
+  return ctx
+}
+
+function AssistantProvider({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState<AssistantMessage[]>([])
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  const toggle = useCallback(() => setOpen((v) => !v), [])
+
+  const send = useCallback(({ text, files }: { text: string; files: File[] }) => {
+    const content =
+      files.length > 0 ? `${text}\n[Attached: ${files.map((f) => f.name).join(', ')}]` : text
+    const userMsg: AssistantMessage = { id: crypto.randomUUID(), role: 'user', content }
+    setMessages((prev) => [...prev, userMsg])
+    setIsProcessing(true)
+
+    setTimeout(() => {
+      const reply: AssistantMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `Processing: "${text}"`,
+      }
+      setMessages((prev) => [...prev, reply])
+      setIsProcessing(false)
+    }, 1200)
+  }, [])
+
+  return (
+    <AssistantContext.Provider value={{ open, setOpen, toggle, messages, send, isProcessing }}>
+      {children}
+    </AssistantContext.Provider>
+  )
+}
+
+// ── Layout wrapper ──────────────────────────────────────────────────────────
+
+function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { open, setOpen, toggle, messages, send, isProcessing } = useAssistant()
 
-  const agents = useMemo(() => MODULE_AGENTS[location.pathname] ?? [], [location.pathname])
-  const hasAgents = agents.length > 0
+  const moduleLabel = MODULE_LABELS[location.pathname] ?? 'Citron'
+  const isHome = location.pathname === '/'
 
   return (
     <AppLayout
-      showRightPanel={showRightPanel && hasAgents}
       sidebarProps={{
         items: SIDEBAR_ITEMS,
         bottomItems: SIDEBAR_BOTTOM_ITEMS,
@@ -216,23 +259,40 @@ function PageWrapper({ showRightPanel = false, children }: { showRightPanel?: bo
         showStatusDot: false,
         showThemeToggle: true,
       }}
-      {...(showRightPanel && hasAgents
-        ? {
-            rightPanelProps: {
-              agents,
-              agentResponses: MODULE_AGENT_RESPONSES,
-              autoRespond: true,
-              autoRespondDelayMs: 800,
-            },
-          }
-        : {})}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full">
         {children}
+
+        {!isHome && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Toggle assistant"
+            className="fixed bottom-5 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--inkblot-semantic-color-interactive-primary)] text-[var(--inkblot-semantic-color-text-inverse)] shadow-lg transition-transform hover:scale-105 active:scale-95"
+          >
+            <BotMessageSquare className="h-5 w-5" />
+          </button>
+        )}
+
+        {!isHome && (
+          <AssistantPanel
+            open={open}
+            onOpenChange={setOpen}
+            title={`${moduleLabel} Assistant`}
+            subtitle={`Ask anything about ${moduleLabel}`}
+            messages={messages}
+            onSend={send}
+            isProcessing={isProcessing}
+            placeholder={`Ask the ${moduleLabel} assistant...`}
+            emptyStateMessage="How can I help?"
+          />
+        )}
       </div>
     </AppLayout>
   )
 }
+
+// ── Routes ──────────────────────────────────────────────────────────────────
 
 function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTourComplete: () => void }) {
   return (
@@ -242,7 +302,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/"
           element={
-            <PageWrapper showRightPanel={false}>
+            <PageWrapper>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<RouteFallback variant="home" />}>
                   <HomePage />
@@ -254,7 +314,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/campaigns"
           element={
-            <PageWrapper showRightPanel={true}>
+            <PageWrapper>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<RouteFallback variant="module" />}>
                   <MarketingPage />
@@ -266,7 +326,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/invoices"
           element={
-            <PageWrapper showRightPanel={true}>
+            <PageWrapper>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<RouteFallback variant="module" />}>
                   <AccountingModule />
@@ -278,7 +338,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/tasks"
           element={
-            <PageWrapper showRightPanel={true}>
+            <PageWrapper>
               <RouteWithErrorBoundary>
                 <Suspense fallback={<RouteFallback variant="module" />}>
                   <TasksManagerPage />
@@ -290,7 +350,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
         <Route
           path="/settings"
           element={
-            <PageWrapper showRightPanel={false}>
+            <PageWrapper>
               <RouteWithErrorBoundary>
                 <SettingsPage />
               </RouteWithErrorBoundary>
@@ -312,10 +372,12 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
   )
 }
 
+// ── Root ─────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const isDev = import.meta.env.DEV
   const [onboardingDone, setOnboardingDone] = useState(
-    () => (isDev ? false : localStorage.getItem('citron-onboarding-done') === 'true')
+    () => (isDev ? false : localStorage.getItem('citron-onboarding-done') === 'true'),
   )
   const [tourActive, setTourActive] = useState(() => {
     if (isDev) return false
@@ -350,13 +412,15 @@ export default function App() {
       <div className="flex h-full min-h-0 flex-col">
         <ToastProvider>
           <JiraProvider>
-            {!onboardingDone && (
-              <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
-            )}
-            <BrowserRouter>
-              <AppWithToaster />
-              <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
-            </BrowserRouter>
+            <AssistantProvider>
+              {!onboardingDone && (
+                <OnboardingWizard steps={ONBOARDING_STEPS} onComplete={handleOnboardingComplete} />
+              )}
+              <BrowserRouter>
+                <AppWithToaster />
+                <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
+              </BrowserRouter>
+            </AssistantProvider>
           </JiraProvider>
         </ToastProvider>
       </div>

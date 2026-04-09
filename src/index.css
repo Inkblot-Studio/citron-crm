@@ -26,11 +26,11 @@ body {
  */
 html[data-theme='dark'] {
   color-scheme: dark;
+  --inkblot-semantic-color-text-primary: color-mix(in srgb, var(--inkblot-dark-color-text-primary) 80%, transparent);
   --inkblot-semantic-color-background-primary: var(--inkblot-dark-color-background-primary);
   --inkblot-semantic-color-background-secondary: var(--inkblot-dark-color-background-secondary);
   --inkblot-semantic-color-background-tertiary: var(--inkblot-dark-color-background-tertiary);
   --inkblot-semantic-color-background-inverse: var(--inkblot-dark-color-background-inverse);
-  --inkblot-semantic-color-text-primary: var(--inkblot-dark-color-text-primary);
   --inkblot-semantic-color-text-secondary: var(--inkblot-dark-color-text-secondary);
   --inkblot-semantic-color-text-tertiary: var(--inkblot-dark-color-text-tertiary);
   --inkblot-semantic-color-text-inverse: var(--inkblot-dark-color-text-inverse);

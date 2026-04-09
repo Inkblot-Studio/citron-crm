@@ -1,22 +1,19 @@
 import { useState, useCallback } from 'react'
-import { CenteredAIChat } from '@citron-systems/citron-ui'
-import type { CenteredAIChatMessage, CenteredAIChatAgent } from '@citron-systems/citron-ui'
-
-const AGENTS: CenteredAIChatAgent[] = [
-  { id: 'general', label: 'General', description: 'Full CRM assistant' },
-  { id: 'accounting', label: 'Accounting', description: 'Invoices & deals' },
-  { id: 'campaigns', label: 'Campaigns', description: 'Email campaigns' },
-  { id: 'tasks', label: 'Tasks', description: 'Tasks & workflows' },
-]
+import { CenteredAssistantChat } from '@citron-systems/citron-ui'
+import type { AssistantMessage } from '@citron-systems/citron-ui'
 
 export default function HomePage() {
-  const [messages, setMessages] = useState<CenteredAIChatMessage[]>([])
-  const [activeAgent, setActiveAgent] = useState('general')
+  const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleSend = useCallback(
-    (content: string) => {
-      const userMsg: CenteredAIChatMessage = {
+    ({ text, files }: { text: string; files: File[] }) => {
+      const content =
+        files.length > 0
+          ? `${text}\n[Attached: ${files.map((f) => f.name).join(', ')}]`
+          : text
+
+      const userMsg: AssistantMessage = {
         id: crypto.randomUUID(),
         role: 'user',
         content,
@@ -25,32 +22,26 @@ export default function HomePage() {
       setIsProcessing(true)
 
       setTimeout(() => {
-        const assistantMsg: CenteredAIChatMessage = {
+        const assistantMsg: AssistantMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: `[${activeAgent}] Processing your request: "${content}"`,
+          content: `Processing your request: "${text}"`,
         }
         setMessages((prev) => [...prev, assistantMsg])
         setIsProcessing(false)
       }, 1200)
     },
-    [activeAgent]
+    [],
   )
 
   return (
-    <CenteredAIChat
+    <CenteredAssistantChat
       messages={messages}
       onSend={handleSend}
       isProcessing={isProcessing}
       placeholder="Ask anything about your CRM..."
-      agents={AGENTS}
-      activeAgent={activeAgent}
-      onAgentChange={setActiveAgent}
-      onFilesAttach={(files) => {
-        const names = files.map((f) => f.name).join(', ')
-        handleSend(`[Attached: ${names}]`)
-      }}
       emptyStateMessage="How can I help you today?"
+      className="max-w-3xl"
     />
   )
 }
