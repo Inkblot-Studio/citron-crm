@@ -27,7 +27,6 @@ import {
 } from 'lucide-react'
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
-const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
 const MarketingPage = lazy(() => import('marketing/Marketing'))
 const InvoicesPage = lazy(() => import('@/pages/InvoicesPage'))
 const TasksPage = lazy(() => import('@/pages/TasksPage'))
@@ -37,7 +36,6 @@ const NotFound = lazy(() => import('@/pages/NotFound'))
 const SIDEBAR_ITEMS: AppSidebarItem[] = [
   { id: 'canvas', icon: MessageSquare, label: 'Canvas', path: '/', dataTour: 'nav-canvas' },
   { id: 'invoices', icon: FileText, label: 'Invoices & Deals', path: '/invoices', dataTour: 'nav-invoices' },
-  { id: 'contacts', icon: Users, label: 'Contacts', path: '/contacts', dataTour: 'nav-contacts' },
   { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
   { id: 'tasks', icon: CheckSquare, label: 'Tasks', path: '/tasks', dataTour: 'nav-tasks' },
 ]
@@ -119,7 +117,7 @@ const ONBOARDING_STEPS = [
       { value: 'intelligence', label: 'AI-powered insights' },
       { value: 'invoicing', label: 'Invoicing & billing' },
       { value: 'reporting', label: 'Reporting & analytics' },
-      { value: 'contacts', label: 'Contact management' },
+      { value: 'audience', label: 'Audience & lead management' },
     ],
   },
   {
@@ -175,12 +173,6 @@ const TOUR_STEPS: GuidedTourStep[] = [
     position: 'right',
   },
   {
-    target: '[data-tour="nav-contacts"]',
-    title: 'Contacts Directory',
-    description: 'Your complete contact database with relationship scoring and engagement tracking.',
-    position: 'right',
-  },
-  {
     target: '[data-tour="nav-campaigns"]',
     title: 'Email Campaigns',
     description: 'Create and send email campaigns with AI-powered templates and a drag-and-drop editor.',
@@ -198,7 +190,6 @@ const AGENTS = [
   { id: 'general', label: 'General', icon: MessageSquare, description: 'Full CRM assistant' },
   { id: 'invoices', label: 'Invoices', icon: FileText, description: 'Create & manage invoices' },
   { id: 'campaigns', label: 'Campaigns', icon: Mail, description: 'Email campaigns & templates' },
-  { id: 'contacts', label: 'Contacts', icon: Users, description: 'Contact management' },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare, description: 'Task automation' },
 ]
 
@@ -206,7 +197,6 @@ const AGENT_RESPONSES: Record<string, { text: string; cards: ('entity' | 'intell
   general: { text: "Here's an overview of your CRM data with entity profile and intelligence scores.", cards: ['entity', 'intelligence'] },
   invoices: { text: "I've pulled up your latest invoice data and deal health metrics.", cards: ['entity', 'intelligence'] },
   campaigns: { text: 'Analyzing your campaign performance. Here are the key insights.', cards: ['intelligence'] },
-  contacts: { text: "Here's the contact profile and relationship intelligence.", cards: ['entity'] },
   tasks: { text: "I've reviewed your task queue. Here's what needs attention.", cards: ['intelligence'] },
 }
 
@@ -249,18 +239,6 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
               <RouteWithErrorBoundary>
                 <Suspense fallback={<ModuleSkeleton className="h-64" />}>
                   <HomePage />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/contacts"
-          element={
-            <PageWrapper showRightPanel={false}>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<ModuleSkeleton className="h-64" />}>
-                  <ContactsPage />
                 </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>
