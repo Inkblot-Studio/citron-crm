@@ -7,7 +7,8 @@ import {
   GuidedTour,
   Toaster,
   ThemeProvider,
-  AssistantPanel,
+  GlobalAssistantChat,
+  Button,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
@@ -26,6 +27,7 @@ import {
   Megaphone,
   Users,
   BotMessageSquare,
+  X,
 } from 'lucide-react'
 import SettingsPage from '@/pages/SettingsPage'
 
@@ -186,7 +188,10 @@ const MODULE_LABELS: Record<string, string> = {
   '/invoices': 'Accounting',
   '/campaigns': 'Campaigns',
   '/tasks': 'Tasks Manager',
+  '/settings': 'Settings',
 }
+
+const ASSISTANT_PANEL_CSS_WIDTH = 'min(100vw, 24rem)'
 
 // ── Assistant context (global toggle + messages) ────────────────────────────
 
@@ -249,6 +254,13 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
   const moduleLabel = MODULE_LABELS[location.pathname] ?? 'Citron'
   const isHome = location.pathname === '/'
 
+  const assistantTitle = `${moduleLabel} Assistant`
+  const assistantSubtitle = `Ask anything about ${moduleLabel}`
+
+  useEffect(() => {
+    if (isHome) setOpen(false)
+  }, [isHome, setOpen])
+
   return (
     <AppLayout
       sidebarProps={{
@@ -260,32 +272,63 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         showThemeToggle: true,
       }}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden w-full h-full">
-        {children}
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {children}
+
+          {!isHome && !open && (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={false}
+              aria-label="Abrir asistente"
+              className="fixed bottom-5 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--inkblot-semantic-color-interactive-primary)] text-[var(--inkblot-semantic-color-text-inverse)] shadow-lg transition-transform hover:scale-105 active:scale-95"
+            >
+              <BotMessageSquare className="h-5 w-5" />
+            </button>
+          )}
+        </div>
 
         {!isHome && (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Toggle assistant"
-            className="fixed bottom-5 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--inkblot-semantic-color-interactive-primary)] text-[var(--inkblot-semantic-color-text-inverse)] shadow-lg transition-transform hover:scale-105 active:scale-95"
+          <aside
+            className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-[var(--inkblot-semantic-color-background-primary)] transition-[width] duration-200 ease-out"
+            style={{ width: open ? ASSISTANT_PANEL_CSS_WIDTH : 0 }}
+            aria-hidden={!open}
           >
-            <BotMessageSquare className="h-5 w-5" />
-          </button>
-        )}
-
-        {!isHome && (
-          <AssistantPanel
-            open={open}
-            onOpenChange={setOpen}
-            title={`${moduleLabel} Assistant`}
-            subtitle={`Ask anything about ${moduleLabel}`}
-            messages={messages}
-            onSend={send}
-            isProcessing={isProcessing}
-            placeholder={`Ask the ${moduleLabel} assistant...`}
-            emptyStateMessage="How can I help?"
-          />
+            {open ? (
+              <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+                <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border px-3 py-2.5">
+                  <div className="min-w-0 pr-2">
+                    <p className="truncate text-sm font-semibold text-[var(--inkblot-semantic-color-text-primary)]">
+                      {assistantTitle}
+                    </p>
+                    <p className="truncate text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
+                      {assistantSubtitle}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 w-8 shrink-0 p-0"
+                    onClick={() => setOpen(false)}
+                    aria-label="Cerrar asistente"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <GlobalAssistantChat
+                    messages={messages}
+                    onSend={send}
+                    isProcessing={isProcessing}
+                    placeholder={`Ask the ${moduleLabel} assistant...`}
+                    emptyStateMessage="How can I help?"
+                    className="min-h-0 flex-1"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </aside>
         )}
       </div>
     </AppLayout>

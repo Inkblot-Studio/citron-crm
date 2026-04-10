@@ -24,7 +24,6 @@ import {
   Label,
   Separator,
   IntegrationPlaceholder,
-  PageHeader,
 } from '@citron-systems/citron-ui'
 
 const sections = [
@@ -233,12 +232,6 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden w-full">
-      <PageHeader
-        title="Settings"
-        subtitle="Workspace configuration"
-        icon={<Settings className="w-4 h-4" />}
-      />
-
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <nav className="w-52 shrink-0 border-r border-border py-4 px-3 space-y-0.5">
           {sections.map((s) => (
