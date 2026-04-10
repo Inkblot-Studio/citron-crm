@@ -367,7 +367,7 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
           }
         />
         <Route
-          path="/invoices"
+          path="/invoices/*"
           element={
             <PageWrapper>
               <RouteWithErrorBoundary>
