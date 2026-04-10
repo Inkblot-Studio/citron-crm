@@ -11,12 +11,17 @@
   },
   "dependencies": {
     "@citron-systems/citron-ds": "^1.0.0",
-    "@citron-systems/citron-ui": "^1.15.0",
+    "@citron-systems/citron-ui": "^1.23.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-error-boundary": "^6.1.1",
     "react-router-dom": "^7.13.0"
+  },
+  "overrides": {
+    "lucide-react": "$lucide-react",
+    "@types/react": "$@types/react",
+    "@types/react-dom": "$@types/react-dom"
   },
   "devDependencies": {
     "@originjs/vite-plugin-federation": "^1.4.1",

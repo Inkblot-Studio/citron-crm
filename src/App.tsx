@@ -1,4 +1,13 @@
-import { Suspense, lazy, useState, useEffect, useCallback, createContext, useContext } from 'react'
+import {
+  Suspense,
+  lazy,
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+  type ComponentProps,
+} from 'react'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppLayout,
@@ -37,16 +46,16 @@ const AccountingModule = lazy(() => import('accounting/Accounting'))
 const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
-const SIDEBAR_ITEMS: AppSidebarItem[] = [
+const SIDEBAR_ITEMS = [
   { id: 'home', icon: MessageSquare, label: 'Home', path: '/', dataTour: 'nav-home' },
   { id: 'accounting', icon: FileText, label: 'Accounting', path: '/invoices', dataTour: 'nav-invoices' },
   { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
   { id: 'tasks', icon: CheckSquare, label: 'Tasks Manager', path: '/tasks', dataTour: 'nav-tasks' },
-]
+] as unknown as AppSidebarItem[]
 
-const SIDEBAR_BOTTOM_ITEMS: AppSidebarItem[] = [
+const SIDEBAR_BOTTOM_ITEMS = [
   { id: 'settings', icon: Settings, label: 'Settings', path: '/settings', dataTour: 'nav-settings' },
-]
+] as unknown as AppSidebarItem[]
 
 const ONBOARDING_STEPS = [
   {
@@ -149,7 +158,7 @@ const ONBOARDING_STEPS = [
     field: 'website',
     placeholder: 'e.g. https://acme.com',
   },
-]
+] as unknown as NonNullable<ComponentProps<typeof OnboardingWizard>['steps']>
 
 const TOUR_STEPS: GuidedTourStep[] = [
   {
