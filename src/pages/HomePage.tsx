@@ -28,7 +28,7 @@ export default function HomePage() {
       const assistantMsg: CenteredAIChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Processing your request: "${trimmed || files.map((f) => f.name).join(', ')}"`,
+        content: `Demo reply for: "${trimmed || files.map((f) => f.name).join(', ')}". Connect a model to enable real answers.`,
       }
       setMessages((prev) => [...prev, assistantMsg])
       setIsProcessing(false)
@@ -41,7 +41,9 @@ export default function HomePage() {
         messages={messages}
         onComposeSubmit={handleComposeSubmit}
         isProcessing={isProcessing}
-        className="h-full min-h-0 w-full"
+        placeholder="Ask Citron Intelligence..."
+        emptyStateMessage="Ask anything — deals, contacts, forecasts..."
+        className="citron-chat-composer-aligned h-full min-h-0 w-full"
       />
     </div>
   )

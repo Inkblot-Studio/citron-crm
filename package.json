@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@citron-systems/citron-ds": "^1.0.0",
-    "@citron-systems/citron-ui": "^1.23.0",
+    "@citron-systems/citron-ui": "^1.24.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -27,7 +27,7 @@
     "@originjs/vite-plugin-federation": "^1.4.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vercel/node": "^5.6.10",
+    "@vercel/node": "^5.7.4",
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",

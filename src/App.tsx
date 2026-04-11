@@ -3,6 +3,7 @@ import {
   lazy,
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   createContext,
   useContext,
@@ -16,13 +17,13 @@ import {
   GuidedTour,
   Toaster,
   ThemeProvider,
-  GlobalAssistantChat,
-  Button,
+  AssistantPanel,
 } from '@citron-systems/citron-ui'
 import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
 import type { AppSidebarItem, GuidedTourStep, AssistantMessage } from '@citron-systems/citron-ui'
 import { RouteFallback } from '@/components/RouteFallback'
+import { resetCitronCanvasScroll } from '@/lib/citron-layout-scroll'
 import {
   MessageSquare,
   FileText,
@@ -36,15 +37,14 @@ import {
   Megaphone,
   Users,
   BotMessageSquare,
-  X,
 } from 'lucide-react'
-import SettingsPage from '@/pages/SettingsPage'
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const MarketingPage = lazy(() => import('marketing/Marketing'))
 const AccountingModule = lazy(() => import('accounting/Accounting'))
 const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 
 const SIDEBAR_ITEMS = [
   { id: 'home', icon: MessageSquare, label: 'Home', path: '/', dataTour: 'nav-home' },
@@ -200,8 +200,6 @@ const MODULE_LABELS: Record<string, string> = {
   '/settings': 'Settings',
 }
 
-const ASSISTANT_PANEL_CSS_WIDTH = 'min(100vw, 24rem)'
-
 // ── Assistant context (global toggle + messages) ────────────────────────────
 
 interface AssistantCtx {
@@ -270,6 +268,10 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
     if (isHome) setOpen(false)
   }, [isHome, setOpen])
 
+  useLayoutEffect(() => {
+    resetCitronCanvasScroll()
+  }, [location.pathname, location.key])
+
   return (
     <AppLayout
       sidebarProps={{
@@ -281,7 +283,7 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         showThemeToggle: true,
       }}
     >
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden">
+      <div className="citron-assistant-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {children}
 
@@ -290,8 +292,8 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={toggle}
               aria-expanded={false}
-              aria-label="Abrir asistente"
-              className="fixed bottom-5 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--inkblot-semantic-color-interactive-primary)] text-[var(--inkblot-semantic-color-text-inverse)] shadow-lg transition-transform hover:scale-105 active:scale-95"
+              aria-label="Open assistant"
+              className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--inkblot-semantic-color-interactive-primary)] text-[var(--inkblot-semantic-color-text-inverse)] shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
             >
               <BotMessageSquare className="h-5 w-5" />
             </button>
@@ -299,45 +301,18 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         </div>
 
         {!isHome && (
-          <aside
-            className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-[var(--inkblot-semantic-color-background-primary)] transition-[width] duration-200 ease-out"
-            style={{ width: open ? ASSISTANT_PANEL_CSS_WIDTH : 0 }}
-            aria-hidden={!open}
-          >
-            {open ? (
-              <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-                <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border px-3 py-2.5">
-                  <div className="min-w-0 pr-2">
-                    <p className="truncate text-sm font-semibold text-[var(--inkblot-semantic-color-text-primary)]">
-                      {assistantTitle}
-                    </p>
-                    <p className="truncate text-xs text-[var(--inkblot-semantic-color-text-secondary)]">
-                      {assistantSubtitle}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="h-8 w-8 shrink-0 p-0"
-                    onClick={() => setOpen(false)}
-                    aria-label="Cerrar asistente"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <GlobalAssistantChat
-                    messages={messages}
-                    onSend={send}
-                    isProcessing={isProcessing}
-                    placeholder={`Ask the ${moduleLabel} assistant...`}
-                    emptyStateMessage="How can I help?"
-                    className="min-h-0 flex-1"
-                  />
-                </div>
-              </div>
-            ) : null}
-          </aside>
+          <AssistantPanel
+            open={open}
+            onOpenChange={setOpen}
+            title={assistantTitle}
+            subtitle={assistantSubtitle}
+            messages={messages}
+            onSend={send}
+            isProcessing={isProcessing}
+            placeholder={`Ask the ${moduleLabel} assistant...`}
+            emptyStateMessage="How can I help you in this module?"
+            className="min-h-0"
+          />
         )}
       </div>
     </AppLayout>
@@ -404,7 +379,9 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
           element={
             <PageWrapper>
               <RouteWithErrorBoundary>
-                <SettingsPage />
+                <Suspense fallback={<RouteFallback variant="settings" />}>
+                  <SettingsPage />
+                </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>
           }
