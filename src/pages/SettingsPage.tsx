@@ -12,6 +12,7 @@ import {
   Download,
   RefreshCw,
   Sparkles,
+  Settings as SettingsModuleIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -31,9 +32,7 @@ import {
   Separator,
   IntegrationPlaceholder,
   Switch,
-  Select,
   Skeleton,
-  PageHeader,
   RadioGroup,
   Textarea,
 } from '@citron-systems/citron-ui'
@@ -56,6 +55,7 @@ import {
   saveProfile,
   saveSecurity,
 } from '@/lib/user-settings-storage'
+import { SettingsMenuSelect } from '@/components/SettingsMenuSelect'
 
 type SectionKey =
   | 'profile'
@@ -103,24 +103,33 @@ const SESSION_OPTIONS = [
 function SettingsPageSkeleton() {
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-border px-4 py-4 sm:px-6">
-        <Skeleton className="h-8 w-48 max-w-full rounded-lg" />
-        <Skeleton className="mt-2 h-4 w-72 max-w-full rounded-lg" />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 md:flex-row md:gap-0 md:p-0">
-        <div className="hidden w-full shrink-0 space-y-2 md:block md:w-56 lg:w-60 md:border-r md:border-border md:p-4 lg:p-5">
+      <header className="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 md:px-6 md:py-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-5 w-40 max-w-full rounded-md" />
+            <Skeleton className="h-2.5 w-64 max-w-full rounded-md" />
+          </div>
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <div className="shrink-0 border-b border-border px-4 py-3 md:hidden">
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </div>
+        <div className="hidden w-56 shrink-0 flex-col gap-0.5 border-border bg-[var(--inkblot-semantic-color-background-primary)] py-4 md:flex md:border-r md:px-3 lg:w-60 lg:px-4">
           {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
-        <div className="md:hidden">
-          <Skeleton className="h-10 w-full rounded-lg" />
-        </div>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-0 pb-6 md:px-6 md:py-6 lg:px-8">
-          <Skeleton className="h-6 w-40 rounded-lg" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <Skeleton className="h-10 w-36 rounded-lg" />
+        <div data-citron-settings-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
+          <div className="px-4 py-6 md:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-3xl space-y-4">
+              <Skeleton className="h-6 w-40 rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-10 w-36 rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -144,7 +153,7 @@ function SettingsRow({
           <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
-      <div className="shrink-0 sm:pl-4">{control}</div>
+      <div className="shrink-0 sm:pl-6">{control}</div>
     </div>
   )
 }
@@ -296,7 +305,12 @@ export default function SettingsPage() {
   const { addToast } = useToast()
   const { config } = useJiraConfig()
   const location = useLocation()
-  const mainScrollRef = useRef<HTMLDivElement>(null)
+  const mainScrollRef = useRef<HTMLDivElement | null>(null)
+
+  const setMainScrollEl = useCallback((node: HTMLDivElement | null) => {
+    mainScrollRef.current = node
+    if (node) node.scrollTop = 0
+  }, [])
   const [hydrated, setHydrated] = useState(false)
   const [active, setActive] = useState<SectionKey>('profile')
 
@@ -307,6 +321,8 @@ export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([])
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
   const [exporting, setExporting] = useState(false)
+
+  const apiKeysSafe = useMemo(() => (Array.isArray(apiKeys) ? apiKeys : []), [apiKeys])
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -321,6 +337,11 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
+    if (!hydrated || Array.isArray(apiKeys)) return
+    setApiKeys(loadApiKeys())
+  }, [hydrated, apiKeys])
+
+  useEffect(() => {
     if (!hydrated) return
     document.documentElement.dataset.citronDensity = appearance.density
     document.documentElement.toggleAttribute('data-reduce-motion', appearance.reduceMotion)
@@ -330,16 +351,37 @@ export default function SettingsPage() {
     }
   }, [appearance.density, appearance.reduceMotion, hydrated])
 
+  /** One scroll region below the Settings header — reset shell + panel so fast route changes never inherit scroll. */
   useLayoutEffect(() => {
     if (!hydrated) return
-    const el = mainScrollRef.current
     const reset = () => {
-      if (el) el.scrollTop = 0
       resetCitronCanvasScroll()
+      const el = mainScrollRef.current
+      if (el) el.scrollTop = 0
     }
     reset()
-    requestAnimationFrame(reset)
+    const outer = requestAnimationFrame(() => {
+      reset()
+      requestAnimationFrame(reset)
+    })
+    return () => cancelAnimationFrame(outer)
   }, [hydrated, active, location.key])
+
+  /** While Settings is open, prevent the shell canvas from retaining scroll from other modules. */
+  useLayoutEffect(() => {
+    const section = document.querySelector<HTMLElement>('section[data-tour="canvas"]')
+    if (!section) return
+    const prevOverflow = section.style.overflow
+    const prevOverscroll = section.style.overscrollBehavior
+    section.style.overflow = 'hidden'
+    section.style.overscrollBehavior = 'none'
+    section.scrollTop = 0
+    resetCitronCanvasScroll()
+    return () => {
+      section.style.overflow = prevOverflow
+      section.style.overscrollBehavior = prevOverscroll
+    }
+  }, [])
 
   const persistNotifications = useCallback((next: NotificationSettings) => {
     setNotifications(next)
@@ -378,15 +420,18 @@ export default function SettingsPage() {
   const handleGenerateApiKey = () => {
     const raw = typeof crypto.randomUUID === 'function' ? crypto.randomUUID().replace(/-/g, '') : String(Date.now())
     const prefix = `crm_live_${raw.slice(0, 8)}`
-    const rec: ApiKeyRecord = {
-      id: crypto.randomUUID(),
-      name: `Key ${apiKeys.length + 1}`,
-      prefix,
-      createdAt: new Date().toISOString(),
-    }
-    const next = [...apiKeys, rec]
-    setApiKeys(next)
-    saveApiKeys(next)
+    setApiKeys((prev) => {
+      const list = Array.isArray(prev) ? prev : []
+      const rec: ApiKeyRecord = {
+        id: crypto.randomUUID(),
+        name: `Key ${list.length + 1}`,
+        prefix,
+        createdAt: new Date().toISOString(),
+      }
+      const next = [...list, rec]
+      saveApiKeys(next)
+      return next
+    })
     addToast({
       title: 'API key created',
       description: `Store the full secret once: ${prefix}_••••••••`,
@@ -404,9 +449,12 @@ export default function SettingsPage() {
   }
 
   const handleRevokeKey = (id: string) => {
-    const next = apiKeys.filter((k) => k.id !== id)
-    setApiKeys(next)
-    saveApiKeys(next)
+    setApiKeys((prev) => {
+      const list = Array.isArray(prev) ? prev : []
+      const next = list.filter((k) => k.id !== id)
+      saveApiKeys(next)
+      return next
+    })
     addToast({ title: 'Key revoked', variant: 'info' })
   }
 
@@ -459,7 +507,7 @@ export default function SettingsPage() {
             </div>
             <Card>
               <CardContent className="space-y-4 pt-6">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-y-4 gap-x-8 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor="display-name">Display name</Label>
                     <Input
@@ -485,22 +533,28 @@ export default function SettingsPage() {
                       onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tz">Time zone</Label>
-                    <Select
+                  <div className="flex min-w-0 flex-col gap-4 sm:pr-2">
+                    <Label htmlFor="tz" className="block shrink-0 text-sm font-medium leading-none">
+                      Time zone
+                    </Label>
+                    <SettingsMenuSelect
                       id="tz"
+                      listAriaLabel="Time zone"
                       options={TIMEZONE_OPTIONS}
                       value={profile.timezone}
-                      onChange={(e) => setProfile((p) => ({ ...p, timezone: e.target.value }))}
+                      onChange={(v) => setProfile((p) => ({ ...p, timezone: v }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lang">Language</Label>
-                    <Select
+                  <div className="flex min-w-0 flex-col gap-4 sm:pl-2">
+                    <Label htmlFor="lang" className="block shrink-0 text-sm font-medium leading-none">
+                      Language
+                    </Label>
+                    <SettingsMenuSelect
                       id="lang"
+                      listAriaLabel="Language"
                       options={LANGUAGE_OPTIONS}
                       value={profile.language}
-                      onChange={(e) => setProfile((p) => ({ ...p, language: e.target.value }))}
+                      onChange={(v) => setProfile((p) => ({ ...p, language: v }))}
                     />
                   </div>
                 </div>
@@ -592,14 +646,17 @@ export default function SettingsPage() {
                 <CardDescription>Re-authentication prompts are simulated locally for this demo.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="session">Idle sign-out</Label>
-                  <Select
+                <div className="flex max-w-md flex-col gap-4">
+                  <Label htmlFor="session" className="block shrink-0 text-sm font-medium leading-none">
+                    Idle sign-out
+                  </Label>
+                  <SettingsMenuSelect
                     id="session"
+                    listAriaLabel="Idle sign-out"
                     options={SESSION_OPTIONS}
                     value={security.sessionTimeout}
-                    onChange={(e) => {
-                      persistSecurityPartial({ sessionTimeout: e.target.value })
+                    onChange={(v) => {
+                      persistSecurityPartial({ sessionTimeout: v })
                       addToast({ title: 'Session policy updated', variant: 'success' })
                     }}
                   />
@@ -752,7 +809,7 @@ export default function SettingsPage() {
                 New key
               </Button>
             </div>
-            {apiKeys.length === 0 ? (
+            {apiKeysSafe.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-sm text-muted-foreground">No keys yet. Create one for automation prototypes.</p>
@@ -760,7 +817,7 @@ export default function SettingsPage() {
               </Card>
             ) : (
               <ul className="space-y-3">
-                {apiKeys.map((k) => (
+                {apiKeysSafe.map((k) => (
                   <li key={k.id}>
                     <Card>
                       <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -860,28 +917,39 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[var(--inkblot-semantic-color-background-primary)]">
-      <div className="shrink-0 border-b border-border px-4 py-4 sm:px-6">
-        <PageHeader
-          title="Settings"
-          subtitle="Workspace, security, and integrations for this Citron CRM shell."
-        />
-      </div>
+      <header className="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 md:px-6 md:py-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+            <SettingsModuleIcon className="h-4 w-4 text-accent" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">Settings</h1>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+              Workspace, security, and integrations for this Citron CRM shell.
+            </p>
+          </div>
+        </div>
+      </header>
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <div className="shrink-0 border-b border-border px-4 py-3 md:hidden">
-          <Label htmlFor="settings-section" className="mb-2 block text-xs font-medium text-muted-foreground">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 md:hidden">
+          <Label
+            htmlFor="settings-section"
+            className="block shrink-0 text-xs font-medium text-muted-foreground"
+          >
             Section
           </Label>
-          <Select
+          <SettingsMenuSelect
             id="settings-section"
+            listAriaLabel="Settings section"
             options={sectionSelectOptions}
             value={active}
-            onChange={(e) => setActive(e.target.value as SectionKey)}
+            onChange={(v) => setActive(v as SectionKey)}
           />
         </div>
 
         <nav
-          className="hidden w-56 shrink-0 flex-col gap-0.5 border-border py-4 lg:w-60 md:flex md:border-r md:px-3 lg:px-4"
+          className="hidden w-56 shrink-0 flex-col gap-0.5 border-border bg-[var(--inkblot-semantic-color-background-primary)] py-4 lg:w-60 md:flex md:border-r md:px-3 lg:px-4"
           aria-label="Settings sections"
         >
           {SECTIONS.map((s) => {
@@ -906,10 +974,13 @@ export default function SettingsPage() {
         </nav>
 
         <div
-          ref={mainScrollRef}
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-6 sm:px-6 lg:px-10 [overflow-anchor:none]"
+          ref={setMainScrollEl}
+          data-citron-settings-scroll
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain"
         >
-          <div className="mx-auto max-w-3xl">{renderSection()}</div>
+          <div className="px-4 py-6 md:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-3xl">{renderSection()}</div>
+          </div>
         </div>
       </div>
     </div>

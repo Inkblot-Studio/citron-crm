@@ -49,7 +49,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const SIDEBAR_ITEMS = [
   { id: 'home', icon: MessageSquare, label: 'Home', path: '/', dataTour: 'nav-home' },
   { id: 'accounting', icon: FileText, label: 'Accounting', path: '/invoices', dataTour: 'nav-invoices' },
-  { id: 'campaigns', icon: Mail, label: 'Campaigns', path: '/campaigns', dataTour: 'nav-campaigns' },
+  { id: 'marketing', icon: Mail, label: 'Marketing', path: '/campaigns', dataTour: 'nav-campaigns' },
   { id: 'tasks', icon: CheckSquare, label: 'Tasks Manager', path: '/tasks', dataTour: 'nav-tasks' },
 ] as unknown as AppSidebarItem[]
 
@@ -195,7 +195,7 @@ const TOUR_STEPS: GuidedTourStep[] = [
 
 const MODULE_LABELS: Record<string, string> = {
   '/invoices': 'Accounting',
-  '/campaigns': 'Campaigns',
+  '/campaigns': 'Marketing',
   '/tasks': 'Tasks Manager',
   '/settings': 'Settings',
 }
@@ -269,7 +269,13 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
   }, [isHome, setOpen])
 
   useLayoutEffect(() => {
-    resetCitronCanvasScroll()
+    const reset = () => resetCitronCanvasScroll()
+    reset()
+    const outer = requestAnimationFrame(() => {
+      reset()
+      requestAnimationFrame(reset)
+    })
+    return () => cancelAnimationFrame(outer)
   }, [location.pathname, location.key])
 
   return (

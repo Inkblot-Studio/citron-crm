@@ -104,8 +104,28 @@ export function saveAppearance(v: AppearanceSettings) {
   localStorage.setItem(APPEARANCE_KEY, JSON.stringify(v))
 }
 
+function isApiKeyRecord(item: unknown): item is ApiKeyRecord {
+  if (item === null || typeof item !== 'object') return false
+  const r = item as Record<string, unknown>
+  return (
+    typeof r.id === 'string' &&
+    typeof r.name === 'string' &&
+    typeof r.prefix === 'string' &&
+    typeof r.createdAt === 'string'
+  )
+}
+
+/** API keys are stored as a JSON array — never use `safeParse(..., [])` (object-spread breaks arrays). */
 export function loadApiKeys(): ApiKeyRecord[] {
-  return safeParse<ApiKeyRecord[]>(localStorage.getItem(API_KEYS_KEY), [])
+  const raw = localStorage.getItem(API_KEYS_KEY)
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(isApiKeyRecord)
+  } catch {
+    return []
+  }
 }
 
 export function saveApiKeys(keys: ApiKeyRecord[]) {

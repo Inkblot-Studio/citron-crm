@@ -88,26 +88,36 @@ html[data-citron-density='compact'] #root {
 }
 
 /**
- * AssistantPanel only (not home): compact composer — cap height so the hook cannot
- * leave an oversized box; scroll inside the textarea past the cap.
- * Selectors match citron-ui AssistantPanel DOM (aside desktop, dialog mobile).
+ * AssistantPanel only (not home): one compact input band (~1–2 lines), action row below.
+ * Cap height so autosize cannot dominate the panel; scroll inside the textarea when needed.
  */
 .citron-assistant-scope > aside[role='complementary'] textarea.resize-none,
 .citron-assistant-scope > div.fixed div[role='dialog'] textarea.resize-none {
   min-height: 2.25rem;
-  max-height: 6.25rem;
+  max-height: 2.875rem;
+  line-height: 1.25rem;
+  box-sizing: border-box;
   overflow-y: auto !important;
 }
 
 @supports (height: 1lh) {
   .citron-assistant-scope > aside[role='complementary'] textarea.resize-none,
   .citron-assistant-scope > div.fixed div[role='dialog'] textarea.resize-none {
-    min-height: max(2.25rem, calc(1lh + 0.4rem));
-    max-height: min(6.25rem, calc(4lh + 0.75rem));
+    min-height: max(2.25rem, calc(1lh + 0.45rem));
+    max-height: min(2.875rem, calc(2lh + 0.5rem));
   }
 }
 
 @layer utilities {
+  /**
+   * Settings content column: reserve scrollbar gutter so layout does not shift horizontally
+   * when overflow appears; disable scroll anchoring after fast navigations.
+   */
+  [data-citron-settings-scroll] {
+    scrollbar-gutter: stable;
+    overflow-anchor: none;
+  }
+
   .glass {
     background: var(--inkblot-semantic-color-background-secondary);
     border: 1px solid var(--inkblot-semantic-color-border-default);

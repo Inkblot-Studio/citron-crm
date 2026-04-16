@@ -42,24 +42,33 @@ function ModuleFallback() {
 function SettingsFallback() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-border px-4 py-4 sm:px-6">
-        <Skeleton className="h-8 w-48 max-w-full rounded-lg" />
-        <Skeleton className="mt-2 h-4 w-72 max-w-full rounded-lg" />
+      <div className="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 md:px-6 md:py-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-5 w-40 max-w-full rounded-md" />
+            <Skeleton className="h-2.5 w-64 max-w-full rounded-md" />
+          </div>
+        </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 md:flex-row md:gap-0 md:p-0">
-        <div className="hidden w-full shrink-0 space-y-2 md:block md:w-56 md:border-r md:border-border md:p-4 lg:w-60 lg:p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <div className="shrink-0 border-b border-border px-4 py-3 md:hidden">
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </div>
+        <div className="hidden w-56 shrink-0 flex-col gap-0.5 border-border bg-[var(--inkblot-semantic-color-background-primary)] py-4 md:flex md:border-r md:px-3 lg:w-60 lg:px-4">
           {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
-        <div className="md:hidden">
-          <Skeleton className="h-10 w-full rounded-lg" />
-        </div>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-0 pb-6 md:px-6 md:py-6 lg:px-8">
-          <Skeleton className="h-6 w-40 rounded-lg" />
-          <Skeleton className="h-36 w-full rounded-xl" />
-          <Skeleton className="h-36 w-full rounded-xl" />
-          <Skeleton className="h-10 w-40 rounded-lg" />
+        <div data-citron-settings-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
+          <div className="px-4 py-6 md:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-3xl space-y-4">
+              <Skeleton className="h-6 w-40 rounded-lg" />
+              <Skeleton className="h-36 w-full rounded-xl" />
+              <Skeleton className="h-36 w-full rounded-xl" />
+              <Skeleton className="h-10 w-40 rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
