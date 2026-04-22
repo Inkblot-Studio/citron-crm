@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
-import { CenteredAIChat } from '@citron-systems/citron-ui'
-import type { CenteredAIChatMessage, CenteredAIChatComposePayload } from '@citron-systems/citron-ui'
+import { HomeCenteredAIChat } from '../components/HomeCenteredAIChat'
+import type { CenteredAIChatMessage } from '@citron-systems/citron-ui'
 
 export default function HomePage() {
   const [messages, setMessages] = useState<CenteredAIChatMessage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const handleComposeSubmit = useCallback(({ text, files }: CenteredAIChatComposePayload) => {
+  const handleSend = useCallback(({ text, files }: { text: string; files: File[] }) => {
     const trimmed = text.trim()
     const lines: string[] = []
     if (trimmed) lines.push(trimmed)
@@ -37,13 +37,13 @@ export default function HomePage() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col">
-      <CenteredAIChat
+      <HomeCenteredAIChat
         messages={messages}
-        onComposeSubmit={handleComposeSubmit}
+        onSend={handleSend}
         isProcessing={isProcessing}
         placeholder="Ask Citron Intelligence..."
         emptyStateMessage="Ask anything — deals, contacts, forecasts..."
-        className="citron-chat-composer-aligned h-full min-h-0 w-full"
+        className="h-full min-h-0 w-full"
       />
     </div>
   )

@@ -4,7 +4,8 @@ export default {
   content: [
     './index.html',
     './src/**/*.{ts,tsx}',
-    './node_modules/@citron-systems/citron-ui/**/*.{js,mjs}',
+    // Solo el bundle publicado: evita escanear node_modules anidados de citron-ui (ENOENT en html-escaper, postcss.config, etc.)
+    './node_modules/@citron-systems/citron-ui/dist/index.{mjs,js}',
   ],
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {

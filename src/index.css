@@ -75,19 +75,6 @@ html[data-citron-density='compact'] #root {
 }
 
 /**
- * CenteredAIChat (home): one text line above the action row, then grow (citron-ui scrollHeight).
- */
-.citron-chat-composer-aligned textarea.resize-none {
-  min-height: 2.25rem;
-}
-
-@supports (height: 1lh) {
-  .citron-chat-composer-aligned textarea.resize-none {
-    min-height: max(2.25rem, calc(1lh + 0.45rem));
-  }
-}
-
-/**
  * AssistantPanel only (not home): one compact input band (~1–2 lines), action row below.
  * Cap height so autosize cannot dominate the panel; scroll inside the textarea when needed.
  */
