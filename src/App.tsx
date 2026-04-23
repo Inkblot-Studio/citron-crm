@@ -37,12 +37,14 @@ import {
   Megaphone,
   Users,
   BotMessageSquare,
+  DollarSign,
 } from 'lucide-react'
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const MarketingPage = lazy(() => import('marketing/Marketing'))
 const AccountingModule = lazy(() => import('accounting/Accounting'))
 const TasksManagerPage = lazy(() => import('tasksManager/TasksManager'))
+const SalesModule = lazy(() => import('sales/Sales'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 
@@ -50,6 +52,13 @@ const SIDEBAR_ITEMS = [
   { id: 'home', icon: MessageSquare, label: 'Home', path: '/', dataTour: 'nav-home' },
   { id: 'accounting', icon: FileText, label: 'Accounting', path: '/invoices', dataTour: 'nav-invoices' },
   { id: 'marketing', icon: Mail, label: 'Marketing', path: '/campaigns', dataTour: 'nav-campaigns' },
+  {
+    id: 'sales',
+    icon: DollarSign,
+    label: 'Sales',
+    path: '/sales',
+    dataTour: 'nav-sales',
+  },
   { id: 'tasks', icon: CheckSquare, label: 'Tasks Manager', path: '/tasks', dataTour: 'nav-tasks' },
 ] as unknown as AppSidebarItem[]
 
@@ -186,6 +195,12 @@ const TOUR_STEPS: GuidedTourStep[] = [
     position: 'right',
   },
   {
+    target: '[data-tour="nav-sales"]',
+    title: 'Sales',
+    description: 'Pipeline, opportunities, and revenue workflows.',
+    position: 'right',
+  },
+  {
     target: '[data-tour="nav-tasks"]',
     title: 'Tasks Manager',
     description: 'Track and manage work in the Tasks Manager module.',
@@ -193,11 +208,13 @@ const TOUR_STEPS: GuidedTourStep[] = [
   },
 ]
 
-const MODULE_LABELS: Record<string, string> = {
-  '/invoices': 'Accounting',
-  '/campaigns': 'Marketing',
-  '/tasks': 'Tasks Manager',
-  '/settings': 'Settings',
+function getModuleLabelForPath(pathname: string): string {
+  if (pathname.startsWith('/invoices')) return 'Accounting'
+  if (pathname === '/campaigns' || pathname.startsWith('/campaigns/')) return 'Marketing'
+  if (pathname.startsWith('/sales')) return 'Sales'
+  if (pathname === '/tasks' || pathname.startsWith('/tasks/')) return 'Tasks Manager'
+  if (pathname.startsWith('/settings')) return 'Settings'
+  return 'Citron'
 }
 
 // ── Assistant context (global toggle + messages) ────────────────────────────
@@ -258,7 +275,7 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const { open, setOpen, toggle, messages, send, isProcessing } = useAssistant()
 
-  const moduleLabel = MODULE_LABELS[location.pathname] ?? 'Citron'
+  const moduleLabel = getModuleLabelForPath(location.pathname)
   const isHome = location.pathname === '/'
 
   const assistantTitle = `${moduleLabel} Assistant`
@@ -375,6 +392,18 @@ function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTour
               <RouteWithErrorBoundary>
                 <Suspense fallback={<RouteFallback variant="module" />}>
                   <TasksManagerPage />
+                </Suspense>
+              </RouteWithErrorBoundary>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/sales/*"
+          element={
+            <PageWrapper>
+              <RouteWithErrorBoundary>
+                <Suspense fallback={<RouteFallback variant="module" />}>
+                  <SalesModule />
                 </Suspense>
               </RouteWithErrorBoundary>
             </PageWrapper>

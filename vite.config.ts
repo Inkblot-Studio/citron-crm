@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
   const accountingRemote =
     env.VITE_ACCOUNTING_REMOTE_URL ||
     'https://citron-crm-accounting-module.vercel.app/assets/remoteEntry.js'
+  const salesRemote =
+    env.VITE_SALES_REMOTE_URL ||
+    'https://citron-crm-sales-module.vercel.app/assets/remoteEntry.js'
 
   return {
     plugins: [
@@ -23,10 +26,10 @@ export default defineConfig(({ mode }) => {
           marketing: 'https://citron-crm-marketing-module.vercel.app/assets/remoteEntry.js',
           tasksManager: tasksManagerRemote,
           accounting: accountingRemote,
+          sales: salesRemote,
         },
-        // React trio must match remotes. Scoped @citron-systems/* as shared breaks resolution
-        // with @originjs/vite-plugin-federation in this setup; remotes still receive compatible
-        // versions if package.json ranges align with the Accounting remote.
+        // @citron-systems/citron-ui and citron-ds cannot be listed in shared here: Vite + this
+        // plugin resolve deep imports to package.json and the packages lack that export (build fails).
         shared: ['react', 'react-dom', 'react-router-dom'],
       }),
     ],
@@ -38,7 +41,12 @@ export default defineConfig(({ mode }) => {
     },
     // Do not pre-bundle Module Federation remotes (breaks dev / runtime resolution)
     optimizeDeps: {
-      exclude: ['marketing/Marketing', 'tasksManager/TasksManager', 'accounting/Accounting'],
+      exclude: [
+        'marketing/Marketing',
+        'tasksManager/TasksManager',
+        'accounting/Accounting',
+        'sales/Sales',
+      ],
     },
     server: {
       cors: true,

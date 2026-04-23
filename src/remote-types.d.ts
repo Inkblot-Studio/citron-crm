@@ -15,3 +15,9 @@ declare module 'accounting/Accounting' {
   const AccountingModule: ComponentType
   export default AccountingModule
 }
+
+declare module 'sales/Sales' {
+  import type { ComponentType } from 'react'
+  const SalesModule: ComponentType
+  export default SalesModule
+}
