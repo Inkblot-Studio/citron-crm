@@ -23,6 +23,7 @@ import { ToastProvider, useToast } from '@/lib/ToastContext'
 import { JiraProvider } from '@/lib/JiraContext'
 import type { AppSidebarItem, GuidedTourStep, AssistantMessage } from '@citron-systems/citron-ui'
 import { RouteFallback } from '@/components/RouteFallback'
+import { SidebarDropletEffect } from '@/components/SidebarDropletEffect'
 import { resetCitronCanvasScroll } from '@/lib/citron-layout-scroll'
 import {
   MessageSquare,
@@ -268,9 +269,29 @@ function AssistantProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── Layout wrapper ──────────────────────────────────────────────────────────
+// ── Layout shell (lifted above <Routes> so the sidebar persists across navigation) ──
 
-function PageWrapper({ children }: { children: React.ReactNode }) {
+function RouteContent({
+  variant = 'module',
+  children,
+}: {
+  variant?: 'home' | 'module' | 'settings'
+  children: React.ReactNode
+}) {
+  return (
+    <RouteWithErrorBoundary>
+      <Suspense fallback={<RouteFallback variant={variant} />}>{children}</Suspense>
+    </RouteWithErrorBoundary>
+  )
+}
+
+function ShellChrome({
+  tourActive,
+  onTourComplete,
+}: {
+  tourActive: boolean
+  onTourComplete: () => void
+}) {
   const location = useLocation()
   const navigate = useNavigate()
   const { open, setOpen, toggle, messages, send, isProcessing } = useAssistant()
@@ -306,9 +327,68 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         showThemeToggle: true,
       }}
     >
+      <SidebarDropletEffect />
+      {tourActive && <GuidedTour steps={TOUR_STEPS} onComplete={onTourComplete} />}
       <div className="citron-assistant-scope flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          {children}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <RouteContent variant="home">
+                  <HomePage />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="/campaigns"
+              element={
+                <RouteContent>
+                  <MarketingPage />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="/invoices/*"
+              element={
+                <RouteContent>
+                  <AccountingModule />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <RouteContent>
+                  <TasksManagerPage />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="/sales/*"
+              element={
+                <RouteContent>
+                  <SalesModule />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RouteContent variant="settings">
+                  <SettingsPage />
+                </RouteContent>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <RouteContent>
+                  <NotFound />
+                </RouteContent>
+              }
+            />
+          </Routes>
 
           {!isHome && !open && (
             <button
@@ -339,100 +419,6 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </AppLayout>
-  )
-}
-
-// ── Routes ──────────────────────────────────────────────────────────────────
-
-function AppRoutes({ tourActive, onTourComplete }: { tourActive: boolean; onTourComplete: () => void }) {
-  return (
-    <>
-      {tourActive && <GuidedTour steps={TOUR_STEPS} onComplete={onTourComplete} />}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="home" />}>
-                  <HomePage />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/campaigns"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="module" />}>
-                  <MarketingPage />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/invoices/*"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="module" />}>
-                  <AccountingModule />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/tasks"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="module" />}>
-                  <TasksManagerPage />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/sales/*"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="module" />}>
-                  <SalesModule />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <PageWrapper>
-              <RouteWithErrorBoundary>
-                <Suspense fallback={<RouteFallback variant="settings" />}>
-                  <SettingsPage />
-                </Suspense>
-              </RouteWithErrorBoundary>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="*"
-          element={
-            <RouteWithErrorBoundary>
-              <Suspense fallback={<RouteFallback variant="module" />}>
-                <NotFound />
-              </Suspense>
-            </RouteWithErrorBoundary>
-          }
-        />
-      </Routes>
-    </>
   )
 }
 
@@ -482,7 +468,7 @@ export default function App() {
               )}
               <BrowserRouter>
                 <AppWithToaster />
-                <AppRoutes tourActive={tourActive} onTourComplete={handleTourComplete} />
+                <ShellChrome tourActive={tourActive} onTourComplete={handleTourComplete} />
               </BrowserRouter>
             </AssistantProvider>
           </JiraProvider>
