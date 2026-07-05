@@ -1,3 +1,4 @@
+import '@citron-systems/citron-ds/fonts'
 import '@citron-systems/citron-ds/css'
 import './index.css'
 
